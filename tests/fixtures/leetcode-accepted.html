@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><title>LeetCode Mock - Two Sum</title></head>
+<body>
+  <div data-cy="question-title">1. Two Sum</div>
+  <div diff="easy" class="text-difficulty-easy">Easy</div>
+  
+  <div data-track-load="description_content">
+    Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
+    You may assume that each input would have exactly one solution, and you may not use the same element twice.
+    You can return the answer in any order.
+  </div>
+
+  <pre>Input: nums = [2,7,11,15], target = 9
+Output: [0,1]
+Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].</pre>
+
+  <pre>Input: nums = [3,2,4], target = 6
+Output: [1,2]</pre>
+
+  <p><strong>Constraints:</strong></p>
+  <ul>
+    <li>2 <= nums.length <= 10^4</li>
+    <li>-10^9 <= nums[i] <= 10^9</li>
+    <li>-10^9 <= target <= 10^9</li>
+    <li>Only one valid answer exists.</li>
+  </ul>
+
+  <a href="/tag/array/">Array</a>
+  <a href="/tag/hash-table/">Hash Table</a>
+
+  <button id="lang-btn">Python3</button>
+
+  <div class="view-lines">
+    <div class="view-line">class Solution:</div>
+    <div class="view-line">    def twoSum(self, nums: List[int], target: int) -> List[int]:</div>
+    <div class="view-line">        seen = {}</div>
+    <div class="view-line">        for i, n in enumerate(nums):</div>
+    <div class="view-line">            if target - n in seen:</div>
+    <div class="view-line">                return [seen[target - n], i]</div>
+    <div class="view-line">            seen[n] = i</div>
+  </div>
+
+  <div data-e2e-locator="submission-result">
+    <span class="success__3Ai7">Accepted</span>
+    <span>Runtime: 40 ms, faster than 95.21%</span>
+    <span>Memory Usage: 16.2 MB, less than 80.43%</span>
+  </div>
+</body>
+</html>

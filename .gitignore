@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.zip
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+*.code-workspace
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+coverage/
+
+# Extension specific
+*.pem
+
+# Agent/AI temp files
+.claude/
+.gemini/
+.antigravity/
+brain/
+artifacts/
+scratch/
+implementation_plan.md
+task.md
+walkthrough.md
+production_strategy.md
+research_notes.md
+analysis_results.md
+experiment_results.md
+*.resolved
+*.metadata.json
+walkthrough.md.resolved.*
+overview.txt
