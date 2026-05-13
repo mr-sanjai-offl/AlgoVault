@@ -51,4 +51,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: algovault-*.zip
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
