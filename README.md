@@ -40,36 +40,27 @@ Unlike basic sync tools, AlgoVault is built with a **"Nuclear Stability"** archi
 - **Styling:** Material Design 3 inspired aesthetics with Vanilla CSS/Tailwind
 - **Communication:** Robust background-to-content script messaging with auto-recovery
 
-## 📦 Installation (Developer Mode)
+## 🛠️ Quick Setup Guide
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/AlgoVault.git
-   cd AlgoVault
-   ```
+Get up and running with **AlgoVault** in less than 2 minutes:
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+### 1. Installation
+1.  **Download:** Head over to the [Latest Releases](https://github.com/mr-sanjai-offl/AlgoVault/releases) and download the `algovault-v1.0.2.zip` (or the newest version).
+2.  **Extract:** Unzip the downloaded file into a folder on your computer.
+3.  **Load to Chrome:**
+    - Open Chrome and navigate to `chrome://extensions/`.
+    - Enable **Developer Mode** (toggle in the top-right corner).
+    - Click **Load unpacked** and select the folder where you extracted the extension.
 
-3. **Build the extension:**
-   ```bash
-   npm run build
-   ```
+### 2. Authentication & Linking
+1.  **Connect GitHub:** Open the AlgoVault popup from your browser toolbar and click **Connect GitHub**. 
+2.  **Verify Device:** A verification code will appear. Click the link to open the GitHub activation page, paste the code, and authorize the extension.
+3.  **Link Repository:** Once authenticated, go to the **Settings** tab in the extension popup. Select the repository and branch where you want your solutions stored.
 
-4. **Load in Chrome:**
-   - Open Chrome and navigate to `chrome://extensions/`.
-   - Enable **"Developer mode"** (top right).
-   - Click **"Load unpacked"** and select the `dist` folder in the project directory.
-
-## 📖 Usage
-
-1. Click the **AlgoVault** icon in your browser toolbar.
-2. Click **"Connect GitHub"** and follow the device verification flow.
-3. Select your target repository and branch in the settings.
-4. Start solving on LeetCode! Your solutions will sync automatically.
-5. Visit your GitHub repository to see your beautiful, auto-generated dashboard.
+### 3. Start Syncing
+1.  Navigate to any problem on [LeetCode](https://leetcode.com/problemset/all/).
+2.  Solve the problem and hit **Submit**.
+3.  **Done!** Once your solution is **Accepted**, AlgoVault will instantly push your code to GitHub and update your repository dashboard automatically.
 
 ## 🛡️ Resilience & Reliability
 
