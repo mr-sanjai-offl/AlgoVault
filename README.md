@@ -62,6 +62,10 @@ Get up and running with **AlgoVault** in less than 2 minutes:
 2.  Solve the problem and hit **Submit**.
 3.  **Done!** Once your solution is **Accepted**, AlgoVault will instantly push your code to GitHub and update your repository dashboard automatically.
 
+<p align="center">
+  <img src="public/setup_guide.png" alt="AlgoVault Setup Guide" width="100%" />
+</p>
+
 ## 🛡️ Resilience & Reliability
 
 AlgoVault is built to handle the "Edge Cases" that break other extensions:
