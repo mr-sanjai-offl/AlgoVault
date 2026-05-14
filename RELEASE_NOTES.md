@@ -1,10 +1,12 @@
-# AlgoVault v1.0.0: The Production Release 🚀
+# AlgoVault v1.0.2: Stability & Persistence Update 🛡️
 
-We are thrilled to announce the official v1.0.0 release of **AlgoVault**—a high-performance, resilient automation engine for synchronizing LeetCode solutions to GitHub.
+This update focuses on long-term reliability and seamless updates for our users.
 
-This release transforms the DSA problem-solving journey into a professional, automated portfolio.
+## ✨ Improvements
 
-## ✨ Key Features
+- **🛡️ Permanent Extension ID:** Added a cryptographic key to the manifest. This ensures your extension ID stays the same forever, preventing "duplicate extension" issues in Chrome.
+- **🔐 Session Persistence:** Updates will no longer log you out! Your GitHub token and settings are now safely preserved between version updates.
+- **📁 Robust Language Support:** Finalized the fix for Java and SQL file extensions (saving as `.java` and `.sql` correctly).
 
 - **🚀 Real-Time Synchronization:** Seamlessly pushes "Accepted" solutions to your repository within 1 second of detection.
 - **🛡️ Nuclear Stability Architecture:** Built with an advanced safety layer to handle extension context invalidation, ensuring the extension remains silent and stable during browser updates.
