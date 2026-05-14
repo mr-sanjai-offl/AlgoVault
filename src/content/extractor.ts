@@ -133,20 +133,42 @@ function extractTags(): string[] {
 }
 
 function extractLanguage(): string {
-  const langBtn = document.querySelector(
-    'button[id*="lang"], div[class*="lang"] button, [data-cy="lang-btn"]',
-  );
-  if (langBtn) return n(langBtn).toLowerCase();
+  // Try finding the language button in the editor toolbar
+  const selectors = [
+    'button[id*="lang"]', 
+    'div[class*="lang"] button', 
+    '[data-cy="lang-btn"]',
+    '.ant-select-selection-item', // Common in newer Ant Design based UIs
+    '[data-mode-id]' // Monaco specific
+  ];
 
-  const codeArea = document.querySelector('.monaco-editor, .CodeMirror');
-  if (codeArea) {
-    const langClass = Array.from(codeArea.classList).find(
-      (c) => c.startsWith('language-') || c.startsWith('mode-'),
-    );
-    if (langClass) return langClass.replace(/^(language-|mode-)/, '');
+  for (const selector of selectors) {
+    const el = document.querySelector(selector);
+    if (el) {
+      const text = n(el).toLowerCase();
+      if (text && !text.includes('select')) return text;
+    }
   }
 
-  return 'python';
+  // Fallback: Check the code area for classes
+  const codeArea = document.querySelector('.monaco-editor, .CodeMirror, [class*="language-"]');
+  if (codeArea) {
+    const langClass = Array.from(codeArea.classList).find(
+      (c) => c.startsWith('language-') || c.startsWith('mode-') || c.includes('sql') || c.includes('java')
+    );
+    if (langClass) {
+      const lang = langClass.replace(/^(language-|mode-)/, '');
+      if (lang) return lang.toLowerCase();
+    }
+  }
+
+  // Last resort: check page text for language badges
+  const bodyText = document.body.innerText.toLowerCase();
+  if (bodyText.includes('java')) return 'java';
+  if (bodyText.includes('python')) return 'python3';
+  if (bodyText.includes('mysql') || bodyText.includes('sql')) return 'sql';
+
+  return 'unknown';
 }
 
 function extractSolutionCode(): string {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AlgoVault",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-powered LeetCode-to-GitHub automation. Auto-sync accepted solutions with AI-generated explanations.",
   "permissions": [
     "storage",

@@ -57,7 +57,9 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   java: '.java',
   'c++': '.cpp',
   cpp: '.cpp',
+  'g++': '.cpp',
   c: '.c',
+  gcc: '.c',
   javascript: '.js',
   typescript: '.ts',
   go: '.go',
@@ -73,6 +75,10 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   elixir: '.ex',
   erlang: '.erl',
   racket: '.rkt',
+  mysql: '.sql',
+  postgresql: '.sql',
+  mssql: '.sql',
+  sql: '.sql',
 };
 
 export const LANGUAGE_FOLDER_NAMES: Record<string, string> = {
@@ -81,7 +87,9 @@ export const LANGUAGE_FOLDER_NAMES: Record<string, string> = {
   java: 'java',
   'c++': 'cpp',
   cpp: 'cpp',
+  'g++': 'cpp',
   c: 'c',
+  gcc: 'c',
   javascript: 'javascript',
   typescript: 'typescript',
   go: 'go',
@@ -94,6 +102,10 @@ export const LANGUAGE_FOLDER_NAMES: Record<string, string> = {
   csharp: 'csharp',
   'c#': 'csharp',
   dart: 'dart',
+  mysql: 'sql',
+  postgresql: 'sql',
+  mssql: 'sql',
+  sql: 'sql',
 };
 
 export const SOLUTION_FILE_NAMES: Record<string, string> = {
@@ -102,7 +114,9 @@ export const SOLUTION_FILE_NAMES: Record<string, string> = {
   java: 'Solution.java',
   'c++': 'solution.cpp',
   cpp: 'solution.cpp',
+  'g++': 'solution.cpp',
   c: 'solution.c',
+  gcc: 'solution.c',
   javascript: 'solution.js',
   typescript: 'solution.ts',
   go: 'solution.go',
@@ -115,4 +129,8 @@ export const SOLUTION_FILE_NAMES: Record<string, string> = {
   csharp: 'Solution.cs',
   'c#': 'Solution.cs',
   dart: 'solution.dart',
+  mysql: 'solution.sql',
+  postgresql: 'solution.sql',
+  mssql: 'solution.sql',
+  sql: 'solution.sql',
 };
