@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Manifest-V3-orange" alt="Manifest V3" />
   <img src="https://img.shields.io/badge/GitHub-Sync-black?logo=github" alt="GitHub Sync" />
-  <img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fmr-sanjai-offl%2FAlgoVault&countColor=%23263759&labelColor=%23000000" alt="Views" />
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=mr-sanjai-offl.AlgoVault" alt="Visitors" />
 </p>
 
 ---
