@@ -52,12 +52,3 @@ chrome.runtime.onInstalled.addListener(async () => {
   await chrome.alarms.create(ALARM_NAMES.PROCESS_QUEUE, { periodInMinutes: 5 });
 });
 
-chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-  const match = details.url.match(/\/problems\/[^/]+\/submissions\/(\d+)\/?/);
-  if (match && match[1]) {
-    chrome.tabs.sendMessage(details.tabId, {
-      type: MessageType.SYNC_BY_ID,
-      payload: { submissionId: match[1] }
-    }).catch(() => {});
-  }
-}, { url: [{ hostSuffix: 'leetcode.com', pathContains: 'submissions' }] });

@@ -112,6 +112,22 @@ function triggerSync(submissionId?: string): void {
   if (id && id === lastProcessedSubmissionId) return;
   if (slug && inFlightSlugs.has(slug)) return;
 
+  const status = getSubmissionStatus();
+  if (status.length > 0 && !status.includes('accepted') && !status.includes('success')) {
+    const btn = document.getElementById('algovault-push-btn') as HTMLButtonElement;
+    if (btn) {
+      btn.disabled = true;
+      btn.style.backgroundColor = '#ef4444';
+      btn.innerHTML = '✗ Only Accepted';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.style.backgroundColor = '#2cbb5d';
+        btn.innerHTML = `${LOGO_SVG}<span>Push to GitHub</span>`;
+      }, 3000);
+    }
+    return;
+  }
+
   const pushBtn = document.getElementById('algovault-push-btn') as HTMLButtonElement;
   if (pushBtn) {
     if (pushBtn.disabled && !pushBtn.innerHTML.includes('Synced')) return;
