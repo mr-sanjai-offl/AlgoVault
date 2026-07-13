@@ -1,7 +1,9 @@
-# AlgoVault v1.0.2: Stability & Persistence Update 🛡️
-This update focuses on long-term reliability and seamless updates for our users.
+# AlgoVault v1.0.3: Cross-Device Sync & Stability Update 🛡️
+This update introduces seamless cross-device synchronization and focuses on long-term reliability for our users.
 
 ## ✨ Improvements
+- **🔄 Cross-Device Synchronization:** Introduced a Git-synced JSON manifest (`.algovault/manifest.json`) as the single source of truth. Your dashboard and stats now instantly synchronize across all your devices (PC, laptop, etc.) without losing any historical data!
+
 - **🛡️ Permanent Extension ID:** Added a cryptographic key to the manifest. This ensures your extension ID stays the same forever, preventing "duplicate extension" issues in Chrome.
 
 - **🔐 Session Persistence:** Updates will no longer log you out! Your GitHub token and settings are now safely preserved between version updates.
@@ -21,6 +23,7 @@ This update focuses on long-term reliability and seamless updates for our users.
 - **🎨 Modern UI/UX:** A sleek, Material 3 inspired dashboard for tracking your stats, streaks, and sync history.
 
 ## 🛠️ Internal Improvements
+- **Cross-Device Safety:** Atomic commits with GraphQL SHA conflict resolution ensure zero data loss when multiple devices sync simultaneously.
 - **Zero-Duplicate Logic:** Synchronous "In-Flight" locking prevents duplicate commits during rapid page transitions.
 - **Metadata Recovery:** Multi-tiered extraction (GraphQL + DOM + Title) ensures accurate problem naming even on slow networks.
 - **Zombie Script Protection:** Automatic state tracking gracefully clears UI elements when the extension context is destroyed.
@@ -29,7 +32,7 @@ This update focuses on long-term reliability and seamless updates for our users.
 - **[AlgoVault 🚀 User Guide](./AlgoVault%20%F0%9F%9A%80%20User%20Guide.pdf.pdf)**
 
 ## 📦 Getting Started
-1. Download the `algovault-1.0.0.zip` from the assets below.
+1. Download the `algovault-1.0.3.zip` from the assets below.
 2. Unzip the file.
 3. Open Chrome and go to `chrome://extensions/`.
 4. Enable **Developer Mode**.
