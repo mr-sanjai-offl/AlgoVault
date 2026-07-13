@@ -3,8 +3,9 @@ import type { StatsPayload } from '@shared/types/messages';
 import { getAllSubmissions } from '../storage/indexedDb';
 import { getStatsCache, setStatsCache } from '../storage/configStore';
 import { fetchLeetCodeUsername } from '../leetcode/api';
+import { getCachedManifest, manifestToStats } from '../manifest/manifestStore';
 
-function computeStreak(dates: string[]): { current: number; longest: number } {
+export function computeStreak(dates: string[]): { current: number; longest: number } {
   if (dates.length === 0) return { current: 0, longest: 0 };
 
   const uniqueDays = [...new Set(dates.map((d) => d.split('T')[0]))].sort().reverse();
@@ -45,6 +46,21 @@ export async function computeStats(): Promise<StatsPayload> {
   const cached = await getStatsCache<StatsPayload>();
   if (cached) return cached;
 
+  // Try cached manifest first (populated after successful syncs)
+  // This ensures stats are accurate on new devices after first sync
+  const cachedManifest = await getCachedManifest();
+  if (cachedManifest && Object.keys(cachedManifest.submissions).length > 0) {
+    const stats = manifestToStats(cachedManifest);
+    if (!stats.username) {
+      try {
+        stats.username = await fetchLeetCodeUsername();
+      } catch { /* non-critical */ }
+    }
+    await setStatsCache(stats);
+    return stats;
+  }
+
+  // Fallback: compute from local IndexedDB (original behavior)
   let username: string | undefined;
   try {
     username = await fetchLeetCodeUsername();

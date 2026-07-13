@@ -14,7 +14,10 @@ export const STORAGE_KEYS = {
   PROCESSED_KEYS: 'processed_keys',
   STATS_CACHE: 'stats_cache',
   DEVICE_FLOW_STATE: 'device_flow_state',
+  MANIFEST_CACHE: 'manifest_cache',
 } as const;
+
+export const MANIFEST_PATH = '.algovault/manifest.json';
 
 export const SYNC_STORAGE_KEYS = {
   PREFERENCES: 'preferences',

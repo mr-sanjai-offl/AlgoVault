@@ -1,6 +1,7 @@
 import { MessageType } from '@shared/types/messages';
 import type { ExtensionMessage, HistoryItem, SyncStatusPayload } from '@shared/types/messages';
-import { STORAGE_KEYS, RETRY, SOLUTION_FILE_NAMES, LANGUAGE_FOLDER_NAMES } from '@shared/constants';
+import { STORAGE_KEYS, RETRY, SOLUTION_FILE_NAMES, LANGUAGE_FOLDER_NAMES, MANIFEST_PATH } from '@shared/constants';
+import { fetchManifest, mergeSubmission, manifestToStats, serializeManifest, cacheManifest } from './manifest/manifestStore';
 import { startDeviceFlow, cancelDeviceFlow } from './auth/deviceFlow';
 import { 
   getAuthState, 
@@ -127,7 +128,7 @@ async function processJob(jobId: string) {
     const solutionPath = `${problemPath}/${langFolder}/${fileName}`;
     const readmePath = `${problemPath}/README.md`;
 
-    // 1. Add to DB first so stats are up to date
+    // 1. Add to local DB (for local history/UI)
     await addSubmission({ 
       ...sub, 
       id: job.id, 
@@ -138,14 +139,33 @@ async function processJob(jobId: string) {
       status: 'synced' 
     });
     
-    await invalidateStatsCache();
-    const stats = await computeStats();
+    // 2. Fetch manifest from repo (cross-device source of truth)
+    await broadcastStatus(jobId, 'in_progress', 'Syncing manifest...');
+    const currentManifest = await fetchManifest(
+      config.repoOwner, config.repoName, config.branch
+    );
 
-    // 2. Build files
+    // 3. Merge this submission into manifest
+    const updatedManifest = mergeSubmission(
+      currentManifest, sub, `${problemPath}/`, langKey
+    );
+
+    // 4. Try to set username if not already in manifest
+    if (!updatedManifest.username) {
+      try {
+        const { fetchLeetCodeUsername } = await import('./leetcode/api');
+        updatedManifest.username = await fetchLeetCodeUsername();
+      } catch { /* non-critical — username is for stats card only */ }
+    }
+
+    // 5. Compute stats from MANIFEST (not local DB)
+    const stats = manifestToStats(updatedManifest);
+
+    // 6. Build files
     const problemReadme = buildReadme(sub);
     const dashboardSection = buildDashboardSection(stats);
 
-    // 3. Handle README merging
+    // 7. Handle README merging
     await broadcastStatus(jobId, 'in_progress', 'Merging dashboard...');
     const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
     const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
@@ -153,16 +173,20 @@ async function processJob(jobId: string) {
     const files = [
       { path: solutionPath, contents: sub.solutionCode },
       { path: readmePath, contents: problemReadme },
-      { path: 'README.md', contents: finalReadme }
+      { path: 'README.md', contents: finalReadme },
+      { path: MANIFEST_PATH, contents: serializeManifest(updatedManifest) },
     ];
 
     await broadcastStatus(jobId, 'committing', 'Pushing to GitHub...');
     const result = await batchCommitFiles(config.repoOwner, config.repoName, config.branch, `feat: Add ${sub.title}`, files);
     
-    // 4. Mark as processed persistently
+    // 8. Cache manifest locally for popup stats + mark processed
+    await cacheManifest(updatedManifest);
+    await invalidateStatsCache();
+
     const processed = await chrome.storage.local.get(STORAGE_KEYS.PROCESSED_KEYS);
     const keys = processed[STORAGE_KEYS.PROCESSED_KEYS] || {};
-    const key = sub.titleSlug; // Use slug as key to prevent multiple language syncs if desired, or ID
+    const key = sub.titleSlug;
     keys[key] = Date.now();
     await chrome.storage.local.set({ [STORAGE_KEYS.PROCESSED_KEYS]: keys });
 
