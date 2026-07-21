@@ -5,6 +5,7 @@
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvushfh3GXqwHfrIbnYyZNJep4434T3LrgSsa131oIZxYmazg1MAk5m8rWxo2IerhlSPHcTbEhXNcn1Y32T5dylq5EK80IjedHY+M15DgdWCthJG4B8YvLbjADfbX2XuFVPQEIW6KkGBMASJdaQnG9yJ6N3sP9TAgtjDG5hJdJyPz3Vt1VYZvgdEiyxOLk/Hsd06yy/Uc267Nx5wX8/yR8+NHNUruJgAmtdPgdPl/86Nll86+hGyQ3CrkaaGCgDggYqDBjRbawqcIvZIOnfQxDOFGyLF5KYV5goKqtXBsSkHXBdCvVqVFTWetiXkHdLQQzO0qe8HKWajIk2zriwHayQIDAQAB",
   "description": "AI-powered LeetCode-to-GitHub automation. Auto-sync accepted solutions with AI-generated explanations.",
   "permissions": [
+    "identity",
     "storage",
     "notifications",
     "alarms",

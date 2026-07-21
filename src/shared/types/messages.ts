@@ -6,8 +6,7 @@ export enum MessageType {
   STATS_UPDATED = 'STATS_UPDATED',
   AUTH_STATUS_REQUEST = 'AUTH_STATUS_REQUEST',
   AUTH_STATUS_RESPONSE = 'AUTH_STATUS_RESPONSE',
-  AUTH_START_DEVICE_FLOW = 'AUTH_START_DEVICE_FLOW',
-  AUTH_DEVICE_CODE = 'AUTH_DEVICE_CODE',
+  AUTH_START_WEB_FLOW = 'AUTH_START_WEB_FLOW',
   AUTH_COMPLETE = 'AUTH_COMPLETE',
   AUTH_FAILED = 'AUTH_FAILED',
   AUTH_LOGOUT = 'AUTH_LOGOUT',
@@ -46,11 +45,7 @@ export interface SyncStatusPayload {
   progress?: number;
 }
 
-export interface DeviceCodePayload {
-  userCode: string;
-  verificationUri: string;
-  expiresIn: number;
-}
+
 
 export interface AuthStatusPayload {
   isAuthenticated: boolean;
@@ -120,8 +115,7 @@ export type ExtensionMessage =
   | { type: MessageType.STATS_UPDATED; payload: StatsPayload }
   | { type: MessageType.AUTH_STATUS_REQUEST }
   | { type: MessageType.AUTH_STATUS_RESPONSE; payload: AuthStatusPayload }
-  | { type: MessageType.AUTH_START_DEVICE_FLOW }
-  | { type: MessageType.AUTH_DEVICE_CODE; payload: DeviceCodePayload }
+  | { type: MessageType.AUTH_START_WEB_FLOW }
   | { type: MessageType.AUTH_COMPLETE; payload: { username: string; avatarUrl: string } }
   | { type: MessageType.AUTH_FAILED; payload: { error: string } }
   | { type: MessageType.AUTH_LOGOUT }

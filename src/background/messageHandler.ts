@@ -2,7 +2,7 @@ import { MessageType } from '@shared/types/messages';
 import type { ExtensionMessage, HistoryItem, SyncStatusPayload } from '@shared/types/messages';
 import { STORAGE_KEYS, RETRY, SOLUTION_FILE_NAMES, LANGUAGE_FOLDER_NAMES, MANIFEST_PATH } from '@shared/constants';
 import { fetchManifest, mergeSubmission, manifestToStats, serializeManifest, cacheManifest } from './manifest/manifestStore';
-import { startDeviceFlow, cancelDeviceFlow } from './auth/deviceFlow';
+import { startWebAuthFlow } from './auth/webAuthFlow';
 import { 
   getAuthState, 
   clearAuthState, 
@@ -233,9 +233,18 @@ export async function handleMessage(
         break;
       }
 
-      case MessageType.AUTH_START_DEVICE_FLOW: {
-        const result = await startDeviceFlow();
-        respond({ type: MessageType.AUTH_DEVICE_CODE, payload: { userCode: result.userCode, verificationUri: result.verificationUri, expiresIn: result.expiresIn } });
+      case MessageType.AUTH_START_WEB_FLOW: {
+        try {
+          const result = await startWebAuthFlow();
+          // Broadcast auth complete to all contexts
+          chrome.runtime.sendMessage({
+            type: MessageType.AUTH_COMPLETE,
+            payload: result,
+          }).catch(() => {});
+          respond({ success: true, payload: result });
+        } catch (error) {
+          respond({ error: getErrorMessage(error) });
+        }
         break;
       }
 

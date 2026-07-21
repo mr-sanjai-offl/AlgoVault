@@ -13,7 +13,6 @@ export const STORAGE_KEYS = {
   USER_CONFIG: 'user_config',
   PROCESSED_KEYS: 'processed_keys',
   STATS_CACHE: 'stats_cache',
-  DEVICE_FLOW_STATE: 'device_flow_state',
   MANIFEST_CACHE: 'manifest_cache',
 } as const;
 
@@ -24,10 +23,9 @@ export const SYNC_STORAGE_KEYS = {
 } as const;
 
 export const API = {
-  GITHUB_DEVICE_CODE: 'https://github.com/login/device/code',
-  GITHUB_OAUTH_TOKEN: 'https://github.com/login/oauth/access_token',
   GITHUB_API: 'https://api.github.com',
   GITHUB_GRAPHQL: 'https://api.github.com/graphql',
+  AUTH_PROXY: import.meta.env.VITE_AUTH_PROXY_URL as string || '',
   OPENROUTER_BASE: 'https://openrouter.ai/api/v1',
   OPENROUTER_COMPLETIONS: 'https://openrouter.ai/api/v1/chat/completions',
 } as const;
@@ -46,7 +44,6 @@ export const RETRY = {
 
 export const ALARM_NAMES = {
   PROCESS_QUEUE: 'algovault-process-queue',
-  DEVICE_FLOW_POLL: 'algovault-device-flow-poll',
 } as const;
 
 export const DASHBOARD_MARKERS = {
