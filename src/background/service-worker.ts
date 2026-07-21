@@ -10,9 +10,7 @@ if (typeof self !== 'undefined' && typeof (self as any).window === 'undefined') 
 
 import { ALARM_NAMES, RETRY } from '@shared/constants';
 import { handleMessage, processQueue } from './messageHandler';
-import { pollForToken } from './auth/deviceFlow';
 import { cleanExpiredKeys } from './storage/configStore';
-import { MessageType } from '@shared/types/messages';
 import type { ExtensionMessage } from '@shared/types/messages';
 
 // Register message listener
@@ -23,28 +21,11 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
-// Register alarm listener
+// Register alarm listener — queue processing only
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === ALARM_NAMES.PROCESS_QUEUE) {
     await cleanExpiredKeys(RETRY.PROCESSED_KEYS_TTL_MS);
     await processQueue();
-  }
-
-  if (alarm.name === ALARM_NAMES.DEVICE_FLOW_POLL) {
-    try {
-      const result = await pollForToken();
-      if (result.complete && result.username) {
-        chrome.runtime.sendMessage({
-          type: MessageType.AUTH_COMPLETE,
-          payload: { username: result.username, avatarUrl: result.avatarUrl ?? '' },
-        }).catch(() => {});
-      }
-    } catch (error) {
-      chrome.runtime.sendMessage({
-        type: MessageType.AUTH_FAILED,
-        payload: { error: String(error) },
-      }).catch(() => {});
-    }
   }
 });
 

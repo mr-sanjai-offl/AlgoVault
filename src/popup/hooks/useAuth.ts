@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MessageType } from '@shared/types/messages';
-import { STORAGE_KEYS } from '@shared/constants';
-import type { AuthStatusPayload, DeviceCodePayload } from '@shared/types/messages';
+import type { AuthStatusPayload } from '@shared/types/messages';
 
 interface AuthHook {
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAuthenticating: boolean;
   username: string;
   avatarUrl: string;
-  deviceCode: DeviceCodePayload | null;
-  isPolling: boolean;
   startAuth: () => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
@@ -18,10 +16,9 @@ interface AuthHook {
 export function useAuth(): AuthHook {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [deviceCode, setDeviceCode] = useState<DeviceCodePayload | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const checkAuth = useCallback(async () => {
@@ -35,22 +32,6 @@ export function useAuth(): AuthHook {
         setIsAuthenticated(payload.isAuthenticated);
         setUsername(payload.username ?? '');
         setAvatarUrl(payload.avatarUrl ?? '');
-      }
-
-      // Check if there is an active device flow to resume
-      const stored = await chrome.storage.local.get(STORAGE_KEYS.DEVICE_FLOW_STATE);
-      if (stored[STORAGE_KEYS.DEVICE_FLOW_STATE]) {
-        const state = stored[STORAGE_KEYS.DEVICE_FLOW_STATE];
-        if (Date.now() < state.expiresAt) {
-          setDeviceCode({
-            userCode: state.userCode,
-            verificationUri: state.verificationUri,
-            expiresIn: Math.floor((state.expiresAt - Date.now()) / 1000),
-          });
-          setIsPolling(true);
-        } else {
-          await chrome.storage.local.remove(STORAGE_KEYS.DEVICE_FLOW_STATE);
-        }
       }
     } catch {
       setIsAuthenticated(false);
@@ -68,15 +49,13 @@ export function useAuth(): AuthHook {
         setIsAuthenticated(true);
         setUsername(p?.username ?? '');
         setAvatarUrl(p?.avatarUrl ?? '');
-        setDeviceCode(null);
-        setIsPolling(false);
+        setIsAuthenticating(false);
         setError(null);
       }
       if (message.type === MessageType.AUTH_FAILED) {
         const p = message.payload as { error: string } | undefined;
         setError(p?.error ?? 'Authentication failed');
-        setIsPolling(false);
-        setDeviceCode(null);
+        setIsAuthenticating(false);
       }
     };
 
@@ -86,17 +65,24 @@ export function useAuth(): AuthHook {
 
   const startAuth = useCallback(async () => {
     setError(null);
-    setIsPolling(true);
+    setIsAuthenticating(true);
     try {
       const response = await chrome.runtime.sendMessage({
-        type: MessageType.AUTH_START_DEVICE_FLOW,
-      }) as { payload: DeviceCodePayload } | undefined;
-      if (response?.payload) {
-        setDeviceCode(response.payload);
+        type: MessageType.AUTH_START_WEB_FLOW,
+      }) as { success?: boolean; error?: string; payload?: { username: string; avatarUrl: string } } | undefined;
+
+      if (response?.error) {
+        setError(response.error);
+        setIsAuthenticating(false);
+      } else if (response?.payload) {
+        setIsAuthenticated(true);
+        setUsername(response.payload.username);
+        setAvatarUrl(response.payload.avatarUrl);
+        setIsAuthenticating(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start auth');
-      setIsPolling(false);
+      setIsAuthenticating(false);
     }
   }, []);
 
@@ -110,10 +96,9 @@ export function useAuth(): AuthHook {
   return {
     isAuthenticated,
     isLoading,
+    isAuthenticating,
     username,
     avatarUrl,
-    deviceCode,
-    isPolling,
     startAuth,
     logout,
     error,

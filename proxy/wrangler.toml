@@ -1,0 +1,9 @@
+name = "algovault-auth-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Secrets are added via CLI:
+#   wrangler secret put GITHUB_CLIENT_ID
+#   wrangler secret put GITHUB_CLIENT_SECRET
+#
+# Do NOT put secrets in this file.

@@ -28,7 +28,6 @@ export async function clearAuthState(): Promise<void> {
   await chrome.storage.local.remove([
     STORAGE_KEYS.AUTH_STATE,
     STORAGE_KEYS.GITHUB_TOKEN,
-    STORAGE_KEYS.DEVICE_FLOW_STATE,
   ]);
 }
 
