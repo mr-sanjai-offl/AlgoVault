@@ -42,42 +42,43 @@
 }
 
 .dark {
-  --primary: #60a5fa;
-  --on-primary: #1e3a8a;
-  --primary-container: #1e40af;
+  --primary: #3b82f6;
+  --on-primary: #ffffff;
+  --primary-container: #1e3a8a;
   --on-primary-container: #dbeafe;
   
-  --secondary: #34d399;
-  --on-secondary: #064e3b;
-  --secondary-container: #065f46;
+  --secondary: #10b981;
+  --on-secondary: #ffffff;
+  --secondary-container: #064e3b;
   --on-secondary-container: #dcfce7;
-  --secondary-fixed-dim: #6ee7b7;
+  --secondary-fixed-dim: #34d399;
   
-  --tertiary: #fbbf24;
-  --on-tertiary: #78350f;
+  --tertiary: #f59e0b;
+  --on-tertiary: #ffffff;
   
-  --error: #f87171;
-  --on-error: #7f1d1d;
+  --error: #ef4444;
+  --on-error: #ffffff;
   
-  --background: #0f172a;
-  --on-background: #f1f5f9;
+  /* Deep premium dark background */
+  --background: #020617; 
+  --on-background: #f8fafc;
   
   --surface: #0f172a;
   --on-surface: #f1f5f9;
   --surface-variant: #1e293b;
   --on-surface-variant: #94a3b8;
   
-  --outline: #475569;
+  --outline: #334155;
   --outline-variant: #1e293b;
   
-  --surface-container-lowest: #020617;
-  --surface-container-low: #0f172a;
-  --surface-container: #1e293b;
-  --surface-container-high: #334155;
-  --surface-container-highest: #475569;
+  --surface-container-lowest: #000000;
+  --surface-container-low: #020617;
+  --surface-container: #0f172a;
+  --surface-container-high: #1e293b;
+  --surface-container-highest: #334155;
   
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(15, 23, 42, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 html, body {
@@ -87,6 +88,7 @@ html, body {
   color: var(--on-background);
   overflow: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'Outfit', sans-serif;
 }
 
 #root {
@@ -109,13 +111,27 @@ html, body {
   .glass-card {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(12px);
-    @apply transition-all duration-200;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+    @apply transition-all duration-300 relative overflow-hidden;
+  }
+  
+  /* Subtle inner light reflection for glassmorphism */
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    z-index: 10;
   }
   
   .glass-card:hover {
     border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 32px -4px rgba(37, 99, 235, 0.15);
+    transform: translateY(-2px);
   }
 
   .pulse-emerald {
@@ -131,7 +147,7 @@ html, body {
 
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    @apply inline-block;
+    @apply inline-block transition-transform duration-200;
   }
 }
 

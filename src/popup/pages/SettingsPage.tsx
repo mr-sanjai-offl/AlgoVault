@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 export function SettingsPage() {
   const { 
     config, repos, isLoading, isSaving, 
-    updateConfig, exportData, clearData 
+    updateConfig, exportData, clearData, triggerBulkSync
   } = useSettings();
   const { username, avatarUrl, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -35,7 +35,7 @@ export function SettingsPage() {
   return (
     <div className="flex flex-col gap-element-gap pb-20">
       {/* GitHub Account Section */}
-      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-unit">
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-unit animate-slide-up" style={{ animationDelay: '0ms' }}>
         <h2 className="text-label-caps font-label-caps text-on-surface-variant mb-2 uppercase tracking-widestest">GitHub Account</h2>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -82,7 +82,7 @@ export function SettingsPage() {
       </section>
 
       {/* Appearance Section */}
-      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-4">
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-4 animate-slide-up" style={{ animationDelay: '50ms' }}>
         <h2 className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widestest">Appearance</h2>
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
@@ -102,7 +102,7 @@ export function SettingsPage() {
       </section>
 
       {/* Repository Config */}
-      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-stack-space">
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-stack-space animate-slide-up" style={{ animationDelay: '100ms' }}>
         <h2 className="text-label-caps font-label-caps text-on-surface-variant mb-2 uppercase tracking-widestest">Repository Config</h2>
         <div className="flex flex-col gap-unit">
           <label className="text-body-sm text-on-surface-variant">Select Repository</label>
@@ -144,8 +144,87 @@ export function SettingsPage() {
         </div>
       </section>
 
+      {/* Integrations Section */}
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <h2 className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widestest flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px]">extension</span>
+          Platform Integrations
+        </h2>
+        
+        {/* LeetCode (Default) */}
+        <div className="flex flex-col gap-3 p-3 bg-surface-container/50 border border-white/5 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="https://leetcode.com/favicon.ico" className="w-5 h-5 rounded" alt="LeetCode" />
+              <span className="text-body-md font-bold text-on-surface">LeetCode</span>
+            </div>
+            <button
+              onClick={() => triggerBulkSync('leetcode')}
+              className="px-3 py-1.5 bg-primary/10 text-primary text-label-caps font-bold uppercase tracking-widest rounded-md border border-primary/20 hover:bg-primary/20 transition-all active:scale-95"
+            >
+              Bulk Sync
+            </button>
+          </div>
+          <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">Default Platform - Active</span>
+        </div>
+
+        {/* Codeforces */}
+        <div className="flex flex-col gap-3 p-3 bg-surface-container/50 border border-white/5 rounded-lg group focus-within:border-primary/30 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="https://codeforces.com/favicon.ico" className="w-5 h-5 rounded bg-white" alt="Codeforces" />
+              <span className="text-body-md font-bold text-on-surface">Codeforces</span>
+            </div>
+            <button
+              onClick={() => triggerBulkSync('codeforces')}
+              disabled={!config.codeforcesHandle}
+              className="px-3 py-1.5 bg-primary/10 text-primary text-label-caps font-bold uppercase tracking-widest rounded-md border border-primary/20 hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
+            >
+              Bulk Sync
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-label-caps text-on-surface-variant uppercase tracking-widest">Handle</label>
+            <input
+              type="text"
+              value={config.codeforcesHandle || ''}
+              onChange={(e) => updateConfig({ codeforcesHandle: e.target.value })}
+              className="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-lg px-3 py-2 text-code-sm font-code-sm text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder="e.g. tourist"
+            />
+          </div>
+        </div>
+
+        {/* HackerRank */}
+        <div className="flex flex-col gap-3 p-3 bg-surface-container/50 border border-white/5 rounded-lg group focus-within:border-primary/30 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="https://hackerrank.com/favicon.ico" className="w-5 h-5 rounded" alt="HackerRank" />
+              <span className="text-body-md font-bold text-on-surface">HackerRank</span>
+            </div>
+            <button
+              onClick={() => triggerBulkSync('hackerrank')}
+              disabled={!config.hackerrankHandle}
+              className="px-3 py-1.5 bg-primary/10 text-primary text-label-caps font-bold uppercase tracking-widest rounded-md border border-primary/20 hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
+            >
+              Bulk Sync
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-label-caps text-on-surface-variant uppercase tracking-widest">Username</label>
+            <input
+              type="text"
+              value={config.hackerrankHandle || ''}
+              onChange={(e) => updateConfig({ hackerrankHandle: e.target.value })}
+              className="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-lg px-3 py-2 text-code-sm font-code-sm text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder="e.g. hackerrank_user"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Sync Preferences */}
-      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-4">
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-4 animate-slide-up" style={{ animationDelay: '150ms' }}>
         <h2 className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widestest">Sync Preferences</h2>
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
@@ -180,7 +259,7 @@ export function SettingsPage() {
       </section>
 
       {/* Data Management */}
-      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-3">
+      <section className="glass-card p-card-padding rounded-xl flex flex-col gap-3 animate-slide-up" style={{ animationDelay: '200ms' }}>
         <h2 className="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widestest">Data Management</h2>
         <button 
           onClick={exportData}

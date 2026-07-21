@@ -98,6 +98,8 @@ export interface ConfigPayload {
   autoSync: boolean;
   notifications: boolean;
   theme: 'light' | 'dark';
+  codeforcesHandle?: string;
+  hackerrankHandle?: string;
 }
 
 export interface RepoInfo {

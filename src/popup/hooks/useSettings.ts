@@ -74,6 +74,13 @@ export function useSettings() {
     await fetchConfig();
   }, [fetchConfig]);
 
+  const triggerBulkSync = useCallback(async (platformId: string) => {
+    await chrome.runtime.sendMessage({
+      type: MessageType.START_BULK_SYNC,
+      payload: { platformId }
+    });
+  }, []);
+
   return {
     config,
     repos,
@@ -83,5 +90,6 @@ export function useSettings() {
     exportData,
     clearData,
     fetchRepos,
+    triggerBulkSync,
   };
 }
