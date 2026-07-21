@@ -21,11 +21,7 @@ export async function fetchSubmissionDetails(submissionId: string): Promise<Leet
   const csrfCookie = cookies.find(c => c.name === 'csrftoken');
 
   if (!sessionCookie) {
-    throw new AlgoVaultError(
-      'LEETCODE_NOT_LOGGED_IN' as never,
-      'Please log in to LeetCode first.',
-      false
-    );
+    throw AlgoVaultError.leetCodeNotLoggedIn();
   }
 
   const query = `
@@ -68,11 +64,7 @@ export async function fetchSubmissionDetails(submissionId: string): Promise<Leet
   const data = result.data?.submissionDetails;
 
   if (!data) {
-    throw new AlgoVaultError(
-      'LEETCODE_API_ERROR' as never,
-      'Failed to fetch submission details from LeetCode.',
-      false
-    );
+    throw AlgoVaultError.leetCodeApiError('Failed to fetch submission details from LeetCode.');
   }
 
   return {
@@ -115,11 +107,7 @@ export async function fetchLeetCodeUsername(): Promise<string> {
   const username = result.data?.userStatus?.username;
 
   if (!username) {
-    throw new AlgoVaultError(
-      'LEETCODE_API_ERROR' as never,
-      'Failed to fetch LeetCode username. Please ensure you are logged in.',
-      false
-    );
+    throw AlgoVaultError.leetCodeApiError('Failed to fetch LeetCode username. Please ensure you are logged in.');
   }
 
   return username;

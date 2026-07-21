@@ -16,7 +16,6 @@
   "host_permissions": [
     "https://leetcode.com/*",
     "https://api.github.com/*",
-    "https://openrouter.ai/*",
     "https://github.com/login/*"
   ],
   "background": {
