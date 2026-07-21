@@ -37,6 +37,7 @@ export interface SubmissionDetectedPayload {
   memory: string;
   url: string;
   timestamp: string;
+  platformId?: string;
 }
 
 export interface SyncStatusPayload {

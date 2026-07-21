@@ -3,6 +3,63 @@ import type { ExtractedSubmission } from '@shared/types/submission';
 import type { IPlatformAdapter } from './core';
 
 const LEETCODE_GRAPHQL_URL = 'https://leetcode.com/graphql';
+const LEETCODE_API_URL = 'https://leetcode.com/api/submissions/';
+
+// In-memory cache for question metadata to avoid redundant GraphQL queries during bulk sync
+const questionMetadataCache: Record<string, {
+  questionId: string;
+  difficulty: string;
+  description: string;
+  tags: string[];
+}> = {};
+
+async function fetchQuestionMetadata(titleSlug: string, csrfToken: string): Promise<any> {
+  if (questionMetadataCache[titleSlug]) {
+    return questionMetadataCache[titleSlug];
+  }
+
+  const query = `
+    query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionFrontendId
+        difficulty
+        content
+        topicTags {
+          name
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(LEETCODE_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+      'Referer': 'https://leetcode.com',
+    },
+    body: JSON.stringify({
+      query,
+      variables: { titleSlug },
+    }),
+  });
+
+  const result = await response.json();
+  const q = result.data?.question;
+  if (!q) {
+    throw AlgoVaultError.leetCodeApiError(`Failed to fetch metadata for ${titleSlug}`);
+  }
+
+  const metadata = {
+    questionId: q.questionFrontendId,
+    difficulty: q.difficulty,
+    description: q.content || '',
+    tags: q.topicTags.map((t: any) => t.name),
+  };
+
+  questionMetadataCache[titleSlug] = metadata;
+  return metadata;
+}
 
 export const LeetCodeAdapter: IPlatformAdapter = {
   id: 'leetcode',
@@ -125,61 +182,78 @@ export const LeetCodeAdapter: IPlatformAdapter = {
       throw AlgoVaultError.leetCodeNotLoggedIn();
     }
 
+    const csrfToken = csrfCookie?.value || '';
     let offset = 0;
     const limit = 20;
     let hasNext = true;
+    const seenSubmissions = new Set<string>();
 
     while (hasNext) {
-      const query = `
-        query recentAcSubmissions($offset: Int!, $limit: Int!) {
-          recentAcSubmissionList(offset: $offset, limit: $limit) {
-            id
-            title
-            titleSlug
-            timestamp
-          }
-        }
-      `;
-      // Note: LeetCode's recentAcSubmissionList doesn't return full details,
-      // so this is a placeholder. For actual bulk fetch, we'd need to fetch 
-      // the list, then fetch details for each, or rely on a different API.
-      // I will implement a simplified version for now that throws not implemented 
-      // or just fetches the list and yields it.
-      
-      const response = await fetch(LEETCODE_GRAPHQL_URL, {
-        method: 'POST',
+      const response = await fetch(`${LEETCODE_API_URL}?offset=${offset}&limit=${limit}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfCookie?.value || '',
+          'X-CSRFToken': csrfToken,
           'Referer': 'https://leetcode.com',
         },
-        body: JSON.stringify({
-          query,
-          variables: { offset, limit },
-        }),
       });
 
+      if (!response.ok) {
+        throw AlgoVaultError.leetCodeApiError('Failed to fetch from LeetCode REST API.');
+      }
+
       const result = await response.json();
-      const list = result.data?.recentAcSubmissionList || [];
-      
+      const list = result.submissions_dump || [];
+      hasNext = result.has_next;
+
       if (list.length === 0) {
-        hasNext = false;
         break;
       }
 
-      // We have to fetch details for each to get the code... this is slow.
-      // We yield them in batches.
       const batch: ExtractedSubmission[] = [];
       for (const item of list) {
+        if (item.status_display !== 'Accepted') {
+          continue;
+        }
+
+        // Deduplicate by problem and language. Since the API returns newest first, 
+        // we only process the most recent accepted submission for a given problem in a given language.
+        const dedupKey = `${item.title_slug}-${item.lang}`;
+        if (seenSubmissions.has(dedupKey)) {
+          continue;
+        }
+        seenSubmissions.add(dedupKey);
+
         try {
-          const details = await this.fetchSubmissionDetails(item.id);
-          batch.push(details);
+          const metadata = await fetchQuestionMetadata(item.title_slug, csrfToken);
+          
+          batch.push({
+            questionId: metadata.questionId,
+            title: item.title,
+            titleSlug: item.title_slug,
+            difficulty: metadata.difficulty,
+            description: metadata.description,
+            examples: '',
+            constraints: '',
+            tags: metadata.tags,
+            language: item.lang,
+            solutionCode: item.code,
+            // The REST API 'time' field is actually "time ago" (e.g. "2 months, 1 week").
+            // If runtime isn't explicitly provided in the payload, we use 'N/A'
+            runtime: item.runtime || 'N/A',
+            memory: item.memory || 'N/A',
+            url: `https://leetcode.com/problems/${item.title_slug}/`,
+            timestamp: new Date(item.timestamp * 1000).toISOString()
+          });
         } catch (e) {
-          // ignore failed fetches
+          console.warn(`Failed to process bulk submission for ${item.title_slug}`, e);
         }
       }
       
-      yield batch;
+      if (batch.length > 0) {
+        yield batch;
+      }
+      
       offset += limit;
     }
   }

@@ -124,8 +124,11 @@ async function processJob(jobId: string) {
     const langFolder = LANGUAGE_FOLDER_NAMES[langKey] || langKey;
     const fileName = SOLUTION_FILE_NAMES[langKey] || 'solution.txt';
     
-    // Structure: Topic/Problem Name/language/solution.ext
-    const problemPath = `${topic}/${problemName}`;
+    // Structure: Platform/Topic/Problem Name/language/solution.ext
+    const platformId = (sub as any).platformId || 'leetcode';
+    const platformKey = platformId as keyof typeof updatedManifest.platforms;
+    const platform = getPlatform(platformId);
+    const problemPath = `${platform.name}/${topic}/${problemName}`;
     const solutionPath = `${problemPath}/${langFolder}/${fileName}`;
     const readmePath = `${problemPath}/README.md`;
 
@@ -148,35 +151,39 @@ async function processJob(jobId: string) {
 
     // 3. Merge this submission into manifest
     const updatedManifest = mergeSubmission(
-      currentManifest, sub, `${problemPath}/`, langKey, 'leetcode'
+      currentManifest, sub, `${problemPath}/`, langKey, platformId
     );
 
     // 4. Try to set username if not already in manifest
-    if (!updatedManifest.platforms.leetcode) {
-      updatedManifest.platforms.leetcode = { submissions: {} };
+    if (!updatedManifest.platforms[platformKey]) {
+      updatedManifest.platforms[platformKey] = { submissions: {} };
     }
-    if (!updatedManifest.platforms.leetcode.username) {
-      try {
-        updatedManifest.platforms.leetcode.username = await LeetCodeAdapter.getUsername();
-      } catch { /* non-critical — username is for stats card only */ }
+    if (platformId === 'leetcode') {
+      const lc = updatedManifest.platforms.leetcode;
+      if (lc && !lc.username) {
+        try {
+          lc.username = await LeetCodeAdapter.getUsername();
+        } catch { /* non-critical — username is for stats card only */ }
+      }
     }
 
     // 5. Compute stats from MANIFEST (not local DB)
-    const stats = manifestToStats(updatedManifest);
+    const stats = manifestToStats(updatedManifest, platformId);
 
     // 6. Build files
     const problemReadme = buildReadme(sub);
-    const dashboardSection = buildDashboardSection(stats);
+    const dashboardSection = buildDashboardSection(stats, platformId);
 
     // 7. Handle README merging
     await broadcastStatus(jobId, 'in_progress', 'Merging dashboard...');
-    const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+    const platformReadmePath = `${platform.name}/README.md`;
+    const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
     const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
 
     const files = [
       { path: solutionPath, contents: sub.solutionCode },
       { path: readmePath, contents: problemReadme },
-      { path: 'README.md', contents: finalReadme },
+      { path: platformReadmePath, contents: finalReadme },
       { path: MANIFEST_PATH, contents: serializeManifest(updatedManifest) },
     ];
 
@@ -247,16 +254,24 @@ async function handleBulkSync(platformId: string) {
         totalSynced++;
       }
       
-      const stats = manifestToStats(currentManifest);
-      const dashboardSection = buildDashboardSection(stats);
-      const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+      const stats = manifestToStats(currentManifest, platformId);
+      const dashboardSection = buildDashboardSection(stats, platformId);
+      const platformReadmePath = `${platform.name}/README.md`;
+      const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
       const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
       
-      filesToCommit.push({ path: 'README.md', contents: finalReadme });
+      filesToCommit.push({ path: platformReadmePath, contents: finalReadme });
       filesToCommit.push({ path: MANIFEST_PATH, contents: serializeManifest(currentManifest) });
       
-      console.log(`[AlgoVault] Committing batch of ${batch.length} submissions...`);
-      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, `feat(${platformId}): Bulk sync ${batch.length} submissions`, filesToCommit);
+      // Deduplicate files by path (keep the last one, which is the most recent in our loop if ordered correctly)
+      const uniqueFilesMap = new Map<string, { path: string; contents: string }>();
+      for (const file of filesToCommit) {
+        uniqueFilesMap.set(file.path, file);
+      }
+      const uniqueFilesToCommit = Array.from(uniqueFilesMap.values());
+      
+      console.log(`[AlgoVault] Committing batch of ${uniqueFilesToCommit.length} unique files...`);
+      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, `feat(${platformId}): Bulk sync ${batch.length} submissions`, uniqueFilesToCommit);
       
       await cacheManifest(currentManifest);
       await invalidateStatsCache();

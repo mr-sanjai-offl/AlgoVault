@@ -98,7 +98,7 @@ export function mergeSubmission(
 
 // --- STATS CONVERSION ---
 
-export function manifestToStats(manifest: Manifest): StatsPayload {
+export function manifestToStats(manifest: Manifest, platformId?: string): StatsPayload {
   let total = 0;
   let easy = 0;
   let medium = 0;
@@ -110,9 +110,13 @@ export function manifestToStats(manifest: Manifest): StatsPayload {
   const allDates: string[] = [];
   const allSolutions: any[] = [];
   
-  // Aggregate across all platforms
-  for (const platformId of Object.keys(manifest.platforms)) {
-    const platformManifest = (manifest.platforms as any)[platformId] as PlatformManifest;
+  // Aggregate across platforms
+  const platformsToProcess = platformId 
+    ? [platformId].filter(id => manifest.platforms[id as keyof typeof manifest.platforms]) 
+    : Object.keys(manifest.platforms);
+
+  for (const pId of platformsToProcess) {
+    const platformManifest = (manifest.platforms as any)[pId] as PlatformManifest;
     const problems = Object.values(platformManifest.submissions);
     total += problems.length;
     

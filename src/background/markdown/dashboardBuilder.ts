@@ -1,7 +1,7 @@
 import type { StatsPayload } from '@shared/types/messages';
 import { DASHBOARD_MARKERS } from '@shared/constants';
 
-export function buildDashboardSection(stats: StatsPayload): string {
+export function buildDashboardSection(stats: StatsPayload, platformId?: string): string {
   const topics = Object.keys(stats.groupedSubmissions).sort();
   
   const topicSections = topics.map(topic => {
@@ -12,7 +12,18 @@ export function buildDashboardSection(stats: StatsPayload): string {
       return a.questionId.localeCompare(b.questionId);
     });
     const problemRows = problems.map(p => {
-      const folderPath = encodeURI(`./${p.githubPath}`);
+      // If we're inside a platform folder, strip the platform folder from the github path
+      let relativePath = p.githubPath;
+      if (platformId) {
+        // p.githubPath is e.g. "LeetCode/Array/Two Sum/"
+        // We want to link to "./Array/Two Sum/" since the README is inside "LeetCode/"
+        const prefix = `${platformId}/`;
+        if (relativePath.toLowerCase().startsWith(prefix.toLowerCase())) {
+          relativePath = relativePath.substring(prefix.length);
+        }
+      }
+      
+      const folderPath = encodeURI(`./${relativePath}`);
       return `| ${p.questionId || '—'} | [${p.title}](${folderPath}) | ${p.difficulty} |`;
     }).join('\n');
 
@@ -29,16 +40,21 @@ ${problemRows}
 `;
   }).join('\n');
 
-  const leetcodeUser = stats.username || 'mr_sanjai_offl';
+  const username = stats.username || 'mr_sanjai_offl';
 
-  const content = `# 🚀 Data Structures & Algorithms Master Repository
+  let branding = '';
+  if (platformId === 'leetcode') {
+    branding = `
+<p align="center">
+  <img src="https://leetcard.jacoblin.cool/${username}?theme=dark&font=Poppins&ext=heatmap" width="100%" />
+</p>
+`;
+  }
+
+  const content = `# 🚀 ${platformId ? platformId.charAt(0).toUpperCase() + platformId.slice(1) : 'Data Structures & Algorithms'} Master Repository
 
 A professionally structured collection of topic-wise DSA solutions, optimized coding patterns, and interview-focused problem solving designed for technical excellence, competitive programming, and software engineering career growth.
-
-<p align="center">
-  <img src="https://leetcard.jacoblin.cool/${leetcodeUser}?theme=dark&font=Poppins&ext=heatmap" width="100%" />
-</p>
-
+${branding}
 # 📚 Structured Problem Solving Topics
 
 ${topicSections}
