@@ -2,7 +2,7 @@ import type { StatsPayload } from '@shared/types/messages';
 
 import { getAllSubmissions } from '../storage/indexedDb';
 import { getStatsCache, setStatsCache } from '../storage/configStore';
-import { fetchLeetCodeUsername } from '../leetcode/api';
+import { LeetCodeAdapter } from '../platforms/leetcode';
 import { getCachedManifest, manifestToStats } from '../manifest/manifestStore';
 
 export function computeStreak(dates: string[]): { current: number; longest: number } {
@@ -49,11 +49,11 @@ export async function computeStats(): Promise<StatsPayload> {
   // Try cached manifest first (populated after successful syncs)
   // This ensures stats are accurate on new devices after first sync
   const cachedManifest = await getCachedManifest();
-  if (cachedManifest && Object.keys(cachedManifest.submissions).length > 0) {
+  if (cachedManifest && Object.keys(cachedManifest.platforms || {}).length > 0) {
     const stats = manifestToStats(cachedManifest);
     if (!stats.username) {
       try {
-        stats.username = await fetchLeetCodeUsername();
+        stats.username = await LeetCodeAdapter.getUsername();
       } catch { /* non-critical */ }
     }
     await setStatsCache(stats);
@@ -63,7 +63,7 @@ export async function computeStats(): Promise<StatsPayload> {
   // Fallback: compute from local IndexedDB (original behavior)
   let username: string | undefined;
   try {
-    username = await fetchLeetCodeUsername();
+    username = await LeetCodeAdapter.getUsername();
   } catch (err) {
     console.warn('[AlgoVault] Could not fetch username for stats', err);
   }

@@ -9,22 +9,30 @@ export interface ManifestProblem {
   questionId: string;
   title: string;
   titleSlug: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string; // string supports Codeforces ratings
   tags: string[];
   solutions: Record<string, ManifestSolution>; // keyed by language
 }
 
+export interface PlatformManifest {
+  username?: string;
+  submissions: Record<string, ManifestProblem>; // keyed by titleSlug or ID
+}
+
 export interface Manifest {
-  version: 1;
+  version: "3.0.0";
   lastUpdated: string; // ISO timestamp
-  username?: string; // LeetCode username for stats card
-  submissions: Record<string, ManifestProblem>; // keyed by titleSlug
+  platforms: {
+    leetcode?: PlatformManifest;
+    codeforces?: PlatformManifest;
+    hackerrank?: PlatformManifest;
+  };
 }
 
 export function createEmptyManifest(): Manifest {
   return {
-    version: 1,
+    version: "3.0.0",
     lastUpdated: new Date().toISOString(),
-    submissions: {},
+    platforms: {},
   };
 }

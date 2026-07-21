@@ -31,7 +31,8 @@ import { computeDedupKey } from '@shared/utils/hash';
 import { getUserRepos, batchCommitFiles, getFileContent } from './github/client';
 import { buildReadme } from './markdown/readmeBuilder';
 import { buildDashboardSection, mergeDashboard } from './markdown/dashboardBuilder';
-import { fetchSubmissionDetails } from './leetcode/api';
+import { LeetCodeAdapter } from './platforms/leetcode';
+import { getPlatform } from './platforms';
 
 type SendResponse = (response: unknown) => void;
 
@@ -147,14 +148,16 @@ async function processJob(jobId: string) {
 
     // 3. Merge this submission into manifest
     const updatedManifest = mergeSubmission(
-      currentManifest, sub, `${problemPath}/`, langKey
+      currentManifest, sub, `${problemPath}/`, langKey, 'leetcode'
     );
 
     // 4. Try to set username if not already in manifest
-    if (!updatedManifest.username) {
+    if (!updatedManifest.platforms.leetcode) {
+      updatedManifest.platforms.leetcode = { submissions: {} };
+    }
+    if (!updatedManifest.platforms.leetcode.username) {
       try {
-        const { fetchLeetCodeUsername } = await import('./leetcode/api');
-        updatedManifest.username = await fetchLeetCodeUsername();
+        updatedManifest.platforms.leetcode.username = await LeetCodeAdapter.getUsername();
       } catch { /* non-critical — username is for stats card only */ }
     }
 
@@ -201,6 +204,69 @@ async function processJob(jobId: string) {
       await markFailed(jobId, errorMsg);
       await notifySyncFailed(jobId, sub.title, errorMsg);
     }
+  }
+}
+
+async function handleBulkSync(platformId: string) {
+  console.log(`[AlgoVault] Starting bulk sync for ${platformId}`);
+  const platform = getPlatform(platformId);
+  const config = await getUserConfig();
+  
+  if (!config.repoOwner || !config.repoName) {
+    showNotification('Bulk Sync Failed', 'GitHub repository not configured.', 'error');
+    return;
+  }
+
+  showNotification('Bulk Sync Started', `Fetching all past submissions from ${platform.name}...`, 'success');
+  
+  try {
+    let totalSynced = 0;
+    
+    for await (const batch of platform.fetchAllPastSubmissions()) {
+      if (batch.length === 0) continue;
+      
+      const filesToCommit: { path: string; contents: string }[] = [];
+      let currentManifest = await fetchManifest(config.repoOwner, config.repoName, config.branch);
+      
+      for (const sub of batch) {
+        const topic = sub.tags[0] || 'General';
+        const problemName = sub.title;
+        const langKey = sub.language.toLowerCase();
+        const langFolder = LANGUAGE_FOLDER_NAMES[langKey] || langKey;
+        const fileName = SOLUTION_FILE_NAMES[langKey] || 'solution.txt';
+        
+        const problemPath = `${platform.name}/${topic}/${problemName}`;
+        const solutionPath = `${problemPath}/${langFolder}/${fileName}`;
+        const readmePath = `${problemPath}/README.md`;
+
+        currentManifest = mergeSubmission(currentManifest, sub as any, `${problemPath}/`, langKey, platformId);
+        
+        const problemReadme = buildReadme(sub);
+        filesToCommit.push({ path: solutionPath, contents: sub.solutionCode });
+        filesToCommit.push({ path: readmePath, contents: problemReadme });
+        totalSynced++;
+      }
+      
+      const stats = manifestToStats(currentManifest);
+      const dashboardSection = buildDashboardSection(stats);
+      const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+      const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
+      
+      filesToCommit.push({ path: 'README.md', contents: finalReadme });
+      filesToCommit.push({ path: MANIFEST_PATH, contents: serializeManifest(currentManifest) });
+      
+      console.log(`[AlgoVault] Committing batch of ${batch.length} submissions...`);
+      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, `feat(${platformId}): Bulk sync ${batch.length} submissions`, filesToCommit);
+      
+      await cacheManifest(currentManifest);
+      await invalidateStatsCache();
+    }
+    
+    showNotification('Bulk Sync Complete', `Successfully synced ${totalSynced} submissions from ${platform.name}!`, 'success');
+  } catch (error) {
+    const msg = getErrorMessage(error);
+    console.error('[AlgoVault] Bulk sync failed:', error);
+    showNotification('Bulk Sync Failed', msg, 'error');
   }
 }
 
@@ -305,27 +371,19 @@ export async function handleMessage(
 
       case MessageType.SYNC_BY_ID: {
         const { submissionId } = message.payload;
-        const details = await fetchSubmissionDetails(submissionId);
-        const payload: any = {
-          questionId: details.questionId,
-          title: details.title,
-          titleSlug: details.titleSlug,
-          difficulty: details.difficulty as any,
-          description: details.questionContent,
-          examples: '',
-          constraints: '',
-          tags: details.tags,
-          language: details.lang,
-          solutionCode: details.code,
-          runtime: details.runtime,
-          memory: details.memory,
-          url: `https://leetcode.com/problems/${details.titleSlug}/`,
-          timestamp: new Date().toISOString()
-        };
+        const payload = await LeetCodeAdapter.fetchSubmissionDetails(submissionId);
         const dedupKey = await computeDedupKey(payload.titleSlug, payload.language, payload.solutionCode);
         const job = await enqueueJob(dedupKey, payload);
         processJob(job.id);
         respond({ success: true });
+        break;
+      }
+
+      case MessageType.START_BULK_SYNC: {
+        const { platformId } = message.payload;
+        // Launch in background so we don't block the extension message port
+        handleBulkSync(platformId).catch(console.error);
+        respond({ success: true, message: 'Bulk sync started in background' });
         break;
       }
 

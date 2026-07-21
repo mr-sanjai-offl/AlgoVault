@@ -2,7 +2,7 @@ export interface ExtractedSubmission {
   questionId: string;
   title: string;
   titleSlug: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
   description: string;
   examples: string;
   constraints: string;
@@ -20,7 +20,7 @@ export interface StoredSubmission {
   questionId: string;
   problemSlug: string;
   title: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
   language: string;
   tags: string[];
   runtime: string;

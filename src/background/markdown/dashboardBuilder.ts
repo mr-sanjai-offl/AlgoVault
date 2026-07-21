@@ -5,7 +5,12 @@ export function buildDashboardSection(stats: StatsPayload): string {
   const topics = Object.keys(stats.groupedSubmissions).sort();
   
   const topicSections = topics.map(topic => {
-    const problems = stats.groupedSubmissions[topic].sort((a, b) => parseInt(a.questionId) - parseInt(b.questionId));
+    const problems = stats.groupedSubmissions[topic].sort((a, b) => {
+      const idA = parseInt(a.questionId);
+      const idB = parseInt(b.questionId);
+      if (!isNaN(idA) && !isNaN(idB)) return idA - idB;
+      return a.questionId.localeCompare(b.questionId);
+    });
     const problemRows = problems.map(p => {
       const folderPath = encodeURI(`./${p.githubPath}`);
       return `| ${p.questionId || '—'} | [${p.title}](${folderPath}) | ${p.difficulty} |`;

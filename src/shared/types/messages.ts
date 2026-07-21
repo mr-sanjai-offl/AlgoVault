@@ -20,6 +20,7 @@ export enum MessageType {
   CLEAR_DATA = 'CLEAR_DATA',
   GET_REPOS = 'GET_REPOS',
   SYNC_BY_ID = 'SYNC_BY_ID',
+  START_BULK_SYNC = 'START_BULK_SYNC',
 }
 
 export interface SubmissionDetectedPayload {
@@ -64,7 +65,7 @@ export interface StatsPayload {
   lastSolved?: {
     title: string;
     date: string;
-    difficulty: 'Easy' | 'Medium' | 'Hard';
+    difficulty: 'Easy' | 'Medium' | 'Hard' | string;
   };
   byLanguage: Record<string, number>;
   byTopic: Record<string, number>;
@@ -128,4 +129,5 @@ export type ExtensionMessage =
   | { type: MessageType.EXPORT_DATA }
   | { type: MessageType.CLEAR_DATA }
   | { type: MessageType.GET_REPOS; payload?: { repos: RepoInfo[] } }
-  | { type: MessageType.SYNC_BY_ID; payload: { submissionId: string } };
+  | { type: MessageType.SYNC_BY_ID; payload: { submissionId: string } }
+  | { type: MessageType.START_BULK_SYNC; payload: { platformId: string } };
