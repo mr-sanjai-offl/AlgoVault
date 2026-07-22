@@ -182,34 +182,6 @@ export function SettingsPage() {
               Bulk Sync
             </button>
           </div>
-          <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">Active</span>
-        </div>
-
-        {/* HackerRank */}
-        <div className="flex flex-col gap-3 p-3 bg-surface-container/50 border border-white/5 rounded-lg group focus-within:border-primary/30 transition-colors">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img src="https://hackerrank.com/favicon.ico" className="w-5 h-5 rounded" alt="HackerRank" />
-              <span className="text-body-md font-bold text-on-surface">HackerRank</span>
-            </div>
-            <button
-              onClick={() => triggerBulkSync('hackerrank')}
-              disabled={!config.hackerrankHandle}
-              className="px-3 py-1.5 bg-primary/10 text-primary text-label-caps font-bold uppercase tracking-widest rounded-md border border-primary/20 hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-30 disabled:grayscale"
-            >
-              Bulk Sync
-            </button>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-label-caps text-on-surface-variant uppercase tracking-widest">Username</label>
-            <input
-              type="text"
-              value={config.hackerrankHandle || ''}
-              onChange={(e) => updateConfig({ hackerrankHandle: e.target.value })}
-              className="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-lg px-3 py-2 text-code-sm font-code-sm text-primary focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder="e.g. hackerrank_user"
-            />
-          </div>
         </div>
       </section>
 

@@ -20,7 +20,6 @@ export function HistoryList({ items, onPush }: HistoryListProps) {
     if (!path) return 'https://leetcode.com/favicon.ico';
     const lowerPath = path.toLowerCase();
     if (lowerPath.includes('codeforces')) return 'https://codeforces.com/favicon.ico';
-    if (lowerPath.includes('hackerrank')) return 'https://hackerrank.com/favicon.ico';
     return 'https://leetcode.com/favicon.ico'; // default
   };
 

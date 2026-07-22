@@ -7,7 +7,6 @@ export interface UserConfig {
   notifications: boolean;
   theme: 'light' | 'dark';
   codeforcesHandle?: string;
-  hackerrankHandle?: string;
 }
 
 export interface AuthState {
@@ -24,5 +23,4 @@ export const DEFAULT_CONFIG: UserConfig = {
   notifications: true,
   theme: 'dark',
   codeforcesHandle: '',
-  hackerrankHandle: '',
 };

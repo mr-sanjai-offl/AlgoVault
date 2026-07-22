@@ -194,8 +194,7 @@ export function manifestToStats(manifest: Manifest, platformId?: string): StatsP
     username = manifest.platforms[platformId as keyof typeof manifest.platforms]!.username!;
   } else {
     username = manifest.platforms.leetcode?.username || 
-               manifest.platforms.codeforces?.username || 
-               manifest.platforms.hackerrank?.username || 'user';
+               manifest.platforms.codeforces?.username || 'user';
   }
 
   return {

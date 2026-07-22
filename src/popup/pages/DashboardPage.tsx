@@ -13,19 +13,18 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const { config, updateConfig } = useSettings();
 
   const platformStats = useMemo(() => {
-    if (!stats?.groupedSubmissions) return { leetcode: 0, codeforces: 0, hackerrank: 0 };
-    let lc = 0, cf = 0, hr = 0;
+    if (!stats?.groupedSubmissions) return { leetcode: 0, codeforces: 0 };
+    let lc = 0, cf = 0;
     
     Object.values(stats.groupedSubmissions).forEach(problems => {
       problems.forEach(p => {
         const path = p.githubPath?.toLowerCase() || '';
         if (path.includes('leetcode')) lc++;
         else if (path.includes('codeforces')) cf++;
-        else if (path.includes('hackerrank')) hr++;
       });
     });
     
-    return { leetcode: lc, codeforces: cf, hackerrank: hr };
+    return { leetcode: lc, codeforces: cf };
   }, [stats]);
 
   if (isLoading || !stats || !config) {
@@ -69,9 +68,9 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* Platform Breakdown */}
       <div className="flex gap-2 mb-4 animate-slide-up" style={{ animationDelay: '50ms' }}>
-        {['leetcode', 'codeforces', 'hackerrank'].map((p) => {
+        {['leetcode', 'codeforces'].map((p) => {
           const count = platformStats[p as keyof typeof platformStats];
-          const name = p === 'leetcode' ? 'LeetCode' : p === 'codeforces' ? 'Codeforces' : 'HackerRank';
+          const name = p === 'leetcode' ? 'LeetCode' : 'Codeforces';
           const iconUrl = `https://${p}.com/favicon.ico`;
           return (
             <div key={p} className="flex-1 glass-card p-2 rounded-lg flex flex-col items-center justify-center gap-1 group hover:border-primary/50 transition-colors">
