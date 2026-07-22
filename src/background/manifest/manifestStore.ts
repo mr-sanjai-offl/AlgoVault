@@ -189,10 +189,14 @@ export function manifestToStats(manifest: Manifest, platformId?: string): StatsP
         }
       : undefined;
 
-  // We take the username from LeetCode if it exists, or just fallback
-  const username = manifest.platforms.leetcode?.username || 
-                   manifest.platforms.codeforces?.username || 
-                   manifest.platforms.hackerrank?.username || 'user';
+  let username = 'user';
+  if (platformId && manifest.platforms[platformId as keyof typeof manifest.platforms]?.username) {
+    username = manifest.platforms[platformId as keyof typeof manifest.platforms]!.username!;
+  } else {
+    username = manifest.platforms.leetcode?.username || 
+               manifest.platforms.codeforces?.username || 
+               manifest.platforms.hackerrank?.username || 'user';
+  }
 
   return {
     username,

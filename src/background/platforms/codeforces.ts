@@ -135,8 +135,11 @@ export const CodeforcesAdapter: IPlatformAdapter = {
           if (endIdx !== -1) {
             description = probHtml.substring(startIdx, endIdx);
             description = description.replace(/<\/div>\s*<\/div>\s*<\/div>\s*$/g, '');
+            // Strip any embedded script tags
+            description = description.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
           } else {
             description = probHtml.substring(startIdx, startIdx + 10000) + '...';
+            description = description.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
           }
         }
       }
@@ -229,8 +232,11 @@ export const CodeforcesAdapter: IPlatformAdapter = {
                   description = probHtml.substring(startIdx, endIdx);
                   // Clean up stray closing divs that might have been caught
                   description = description.replace(/<\/div>\s*<\/div>\s*<\/div>\s*$/g, '');
+                  // Strip any embedded script tags
+                  description = description.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
                 } else {
                   description = probHtml.substring(startIdx, startIdx + 10000) + '...';
+                  description = description.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
                 }
               }
             }
