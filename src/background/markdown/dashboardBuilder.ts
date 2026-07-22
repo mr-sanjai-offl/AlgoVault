@@ -87,9 +87,38 @@ export function mergeDashboard(existingReadme: string, newSection: string): stri
 }
 
 export function buildRootDashboardSection(manifest: any): string {
+  const hasLeetCode = !!manifest.platforms.leetcode;
+  const hasCodeforces = !!manifest.platforms.codeforces;
+  
   const lcUsername = manifest.platforms.leetcode?.username || 'user';
   const cfUsername = manifest.platforms.codeforces?.username || 'user';
   
+  let analyticsSection = '';
+  if (hasLeetCode) {
+    analyticsSection += `
+<p align="center">
+  <img src="https://github-readme-leetcode-card.romitsagu.com/${lcUsername}?theme=tokyonight&show=graph,recent" width="100%" />
+</p>
+`;
+  }
+  
+  if (hasCodeforces) {
+    if (hasLeetCode) analyticsSection += `\n<br />\n`;
+    analyticsSection += `
+<p align="center">
+  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${cfUsername}&theme=dark" width="100%" />
+</p>
+`;
+  }
+
+  let structureSection = '';
+  if (hasLeetCode) {
+    structureSection += `- **[LeetCode](./LeetCode)**: Topic-wise FAANG interview preparation and algorithmic challenges.\n`;
+  }
+  if (hasCodeforces) {
+    structureSection += `- **[Codeforces](./Codeforces)**: Competitive programming contest solutions focusing on math, greedies, and advanced data structures.\n`;
+  }
+
   const content = `# 🏆 Ultimate Competitive Programming & DSA Vault
 
 Welcome to my **Master Repository** for Data Structures, Algorithms, and Competitive Programming! 🚀
@@ -97,22 +126,10 @@ Welcome to my **Master Repository** for Data Structures, Algorithms, and Competi
 This repository contains my personal library of highly optimized, strictly tested, and structured solutions to problems across multiple platforms. It is designed to track my progress, document optimal coding patterns, and demonstrate technical excellence in problem-solving.
 
 ## 📊 Real-Time Performance Analytics
-
-<p align="center">
-  <img src="https://github-readme-leetcode-card.romitsagu.com/${lcUsername}?theme=tokyonight&show=graph,recent" width="100%" />
-</p>
-
-<br />
-
-<p align="center">
-  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${cfUsername}&theme=dark" width="100%" />
-</p>
-
+${analyticsSection}
 ## 📂 Repository Structure
 
-- **[LeetCode](./LeetCode)**: Topic-wise FAANG interview preparation and algorithmic challenges.
-- **[Codeforces](./Codeforces)**: Competitive programming contest solutions focusing on math, greedies, and advanced data structures.
-
+${structureSection}
 ---
 <p align="center">
   <i>Auto-generated & continuously synced by <b>AlgoVault</b>. Building technical excellence through consistent problem solving.</i>
