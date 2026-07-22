@@ -67,6 +67,36 @@ export async function getUserRepos(): Promise<GitHubRepoResponse[]> {
   return allRepos;
 }
 
+export async function createRepository(name: string, description: string, isPrivate: boolean): Promise<GitHubRepoResponse> {
+  const response = await githubFetch('/user/repos', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      description,
+      private: isPrivate,
+      auto_init: true
+    })
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to create repository');
+  }
+  
+  return await response.json() as GitHubRepoResponse;
+}
+
+export async function setRepoTopics(owner: string, repo: string, topics: string[]): Promise<void> {
+  const response = await githubFetch(`/repos/${owner}/${repo}/topics`, {
+    method: 'PUT',
+    body: JSON.stringify({ names: topics })
+  });
+  
+  if (!response.ok) {
+    console.warn(`[AlgoVault] Failed to set topics for ${owner}/${repo}`);
+  }
+}
+
 export async function getRef(owner: string, repo: string, branch: string): Promise<string> {
   const response = await githubFetch(
     `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}?t=${Date.now()}`,

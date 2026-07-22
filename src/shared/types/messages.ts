@@ -19,6 +19,7 @@ export enum MessageType {
   EXPORT_DATA = 'EXPORT_DATA',
   CLEAR_DATA = 'CLEAR_DATA',
   GET_REPOS = 'GET_REPOS',
+  CREATE_REPO = 'CREATE_REPO',
   SYNC_BY_ID = 'SYNC_BY_ID',
   START_BULK_SYNC = 'START_BULK_SYNC',
 }
@@ -131,5 +132,6 @@ export type ExtensionMessage =
   | { type: MessageType.EXPORT_DATA }
   | { type: MessageType.CLEAR_DATA }
   | { type: MessageType.GET_REPOS; payload?: { repos: RepoInfo[] } }
+  | { type: MessageType.CREATE_REPO; payload: { name: string; isPrivate: boolean } }
   | { type: MessageType.SYNC_BY_ID; payload: { submissionId: string; platformId?: string; language?: string; runtime?: string; memory?: string; } }
   | { type: MessageType.START_BULK_SYNC; payload: { platformId: string } };

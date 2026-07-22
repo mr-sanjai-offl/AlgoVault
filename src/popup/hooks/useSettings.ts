@@ -81,6 +81,25 @@ export function useSettings() {
     });
   }, []);
 
+  const createRepo = useCallback(async (name: string, isPrivate: boolean) => {
+    setIsSaving(true);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.CREATE_REPO,
+        payload: { name, isPrivate }
+      }) as { success?: boolean, error?: string };
+      
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+      
+      await fetchRepos();
+      await fetchConfig();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [fetchRepos, fetchConfig]);
+
   return {
     config,
     repos,
@@ -91,5 +110,6 @@ export function useSettings() {
     clearData,
     fetchRepos,
     triggerBulkSync,
+    createRepo,
   };
 }

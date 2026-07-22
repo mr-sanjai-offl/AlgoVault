@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 export function SettingsPage() {
   const { 
     config, repos, isLoading, isSaving, 
-    updateConfig, exportData, clearData, triggerBulkSync
+    updateConfig, exportData, clearData, triggerBulkSync, createRepo
   } = useSettings();
   const { username, avatarUrl, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -14,6 +14,22 @@ export function SettingsPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [clearInput, setClearInput] = useState('');
+  
+  const [showCreateRepo, setShowCreateRepo] = useState(false);
+  const [newRepoName, setNewRepoName] = useState('');
+  const [createRepoError, setCreateRepoError] = useState('');
+
+  const handleCreateRepo = async () => {
+    if (!newRepoName.trim()) return;
+    try {
+      setCreateRepoError('');
+      await createRepo(newRepoName.trim(), false); // Public by default
+      setShowCreateRepo(false);
+      setNewRepoName('');
+    } catch (err: any) {
+      setCreateRepoError(err.message || 'Failed to create repository');
+    }
+  };
 
   const handleClearData = async () => {
     if (clearInput.toUpperCase() === 'CLEAR') {
@@ -131,6 +147,45 @@ export function SettingsPage() {
             </select>
             <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
           </div>
+          
+          {!showCreateRepo ? (
+            <button 
+              onClick={() => setShowCreateRepo(true)}
+              className="mt-2 text-primary text-body-sm font-bold flex items-center gap-1 hover:underline self-start"
+            >
+              <span className="material-symbols-outlined text-[16px]">add_circle</span>
+              Create New Repository
+            </button>
+          ) : (
+            <div className="mt-2 p-3 bg-surface-container-low border border-primary/20 rounded-lg flex flex-col gap-2">
+              <label className="text-body-sm text-on-surface font-medium">New Repository Name</label>
+              <input
+                type="text"
+                value={newRepoName}
+                onChange={(e) => setNewRepoName(e.target.value)}
+                placeholder="e.g. algovault-solutions"
+                className="w-full bg-surface-container-lowest border border-outline-variant/10 rounded md px-2 py-1.5 text-code-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+              />
+              {createRepoError && (
+                <span className="text-error text-[10px] uppercase font-bold">{createRepoError}</span>
+              )}
+              <div className="flex gap-2 mt-1">
+                <button 
+                  onClick={() => { setShowCreateRepo(false); setCreateRepoError(''); }}
+                  className="flex-1 py-1.5 text-on-surface-variant text-[11px] font-bold uppercase tracking-widest hover:bg-white/5 rounded"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCreateRepo}
+                  disabled={isSaving || !newRepoName.trim()}
+                  className="flex-1 py-1.5 bg-primary text-white text-[11px] font-bold uppercase tracking-widest rounded disabled:opacity-50"
+                >
+                  {isSaving ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-unit pt-2">
           <label className="text-body-sm text-on-surface-variant">Branch</label>
