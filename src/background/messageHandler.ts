@@ -229,6 +229,19 @@ async function handleBulkSync(platformId: string) {
   try {
     let totalSynced = 0;
     let currentManifest = await fetchManifest(config.repoOwner, config.repoName, config.branch);
+
+    const platformKey = platformId as keyof typeof currentManifest.platforms;
+    if (!currentManifest.platforms[platformKey]) {
+      currentManifest.platforms[platformKey] = { submissions: {} };
+    }
+    if (platformId === 'leetcode') {
+      const lc = currentManifest.platforms.leetcode;
+      if (lc && !lc.username) {
+        try {
+          lc.username = await LeetCodeAdapter.getUsername();
+        } catch { /* non-critical — username is for stats card only */ }
+      }
+    }
     
     for await (const batch of platform.fetchAllPastSubmissions()) {
       if (batch.length === 0) continue;
