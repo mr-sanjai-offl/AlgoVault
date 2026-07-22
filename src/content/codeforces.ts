@@ -75,16 +75,27 @@ function checkCodeforcesSubmissions() {
       }
       
       const href = problemLink.getAttribute('href') || '';
-      // href looks like /contest/123/problem/A
       const match = href.match(/\/contest\/(\d+)\/problem\/([^/]+)/) || href.match(/\/problemset\/problem\/(\d+)\/([^/]+)/);
       if (match) {
         const contestId = match[1];
         const index = match[2];
         
-        // Final raw submission ID for the adapter: contestId-index-submissionId
+        // Extract language, runtime, memory
+        let language = 'Unknown';
+        let runtime = 'N/A';
+        let memory = 'N/A';
+        
+        const tds = Array.from(row.querySelectorAll('td'));
+        const vIndex = tds.findIndex(td => td.classList.contains('status-verdict-cell'));
+        if (vIndex !== -1) {
+           if (vIndex > 0) language = tds[vIndex - 1].textContent?.trim() || 'Unknown';
+           if (vIndex + 1 < tds.length) runtime = tds[vIndex + 1].textContent?.trim() || 'N/A';
+           if (vIndex + 2 < tds.length) memory = tds[vIndex + 2].textContent?.trim() || 'N/A';
+        }
+
         const rawSubmissionId = `${contestId}-${index}-${submissionId}`;
-        console.log(`[AlgoVault] Triggering sync for ${rawSubmissionId}`);
-        triggerSync(rawSubmissionId);
+        console.log(`[AlgoVault] Triggering sync for ${rawSubmissionId} with lang=${language}`);
+        triggerSync(rawSubmissionId, language, runtime, memory);
         break; // Only process one at a time
       } else {
         console.warn(`[AlgoVault] Could not extract contest ID from ${href}`);
@@ -93,7 +104,7 @@ function checkCodeforcesSubmissions() {
   }
 }
 
-async function triggerSync(rawSubmissionId: string) {
+async function triggerSync(rawSubmissionId: string, language: string, runtime: string, memory: string) {
   if (isInvalidated() || inFlightSubmissionId === rawSubmissionId) return;
 
   // Get autoSync preference
@@ -128,7 +139,13 @@ async function triggerSync(rawSubmissionId: string) {
   try {
     await safeSendMessage({
       type: MessageType.SYNC_BY_ID,
-      payload: { submissionId: rawSubmissionId, platformId: 'codeforces' },
+      payload: { 
+        submissionId: rawSubmissionId, 
+        platformId: 'codeforces',
+        language,
+        runtime,
+        memory
+      },
     });
   } catch (err) {
     console.error('[AlgoVault] Codeforces sync failed', err);

@@ -79,7 +79,7 @@ export const CodeforcesAdapter: IPlatformAdapter = {
     }
   },
 
-  async fetchSubmissionDetails(submissionIdRaw: string): Promise<ExtractedSubmission> {
+  async fetchSubmissionDetails(submissionIdRaw: string, optionalMeta?: { language?: string; runtime?: string; memory?: string; }): Promise<ExtractedSubmission> {
     const parts = submissionIdRaw.split('-');
     let contestId = '', index = '', submissionId = '';
     
@@ -124,14 +124,24 @@ export const CodeforcesAdapter: IPlatformAdapter = {
     const problemName = problemMeta.name;
     
     // Extract Language
-    const langMatch = html.match(/<td>\s*Language:\s*<\/td>\s*<td>\s*([^<]+)\s*<\/td>/);
-    const language = langMatch ? langMatch[1].trim() : 'Unknown';
+    let language = optionalMeta?.language;
+    if (!language || language === 'Unknown') {
+      const langMatch = html.match(/<td>\s*Language:\s*<\/td>\s*<td>\s*([^<]+)\s*<\/td>/);
+      language = langMatch ? langMatch[1].trim() : 'Unknown';
+    }
     
     // Extract runtime and memory
-    const timeMatch = html.match(/<i class="icon-time"><\/i>\s*([^<]+)<\/td>/);
-    const memMatch = html.match(/<i class="icon-picture"><\/i>\s*([^<]+)<\/td>/);
-    const runtime = timeMatch ? timeMatch[1].trim() : 'N/A';
-    const memory = memMatch ? memMatch[1].trim() : 'N/A';
+    let runtime = optionalMeta?.runtime;
+    if (!runtime || runtime === 'N/A') {
+      const timeMatch = html.match(/<i class="icon-time"><\/i>\s*([^<]+)<\/td>/);
+      runtime = timeMatch ? timeMatch[1].trim() : 'N/A';
+    }
+    
+    let memory = optionalMeta?.memory;
+    if (!memory || memory === 'N/A') {
+      const memMatch = html.match(/<i class="icon-picture"><\/i>\s*([^<]+)<\/td>/);
+      memory = memMatch ? memMatch[1].trim() : 'N/A';
+    }
 
     // Fetch problem statement
     let description = 'Please visit the problem link for the full statement.';

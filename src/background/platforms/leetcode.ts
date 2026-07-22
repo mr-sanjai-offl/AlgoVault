@@ -103,7 +103,7 @@ export const LeetCodeAdapter: IPlatformAdapter = {
     return username;
   },
 
-  async fetchSubmissionDetails(submissionId: string): Promise<ExtractedSubmission> {
+  async fetchSubmissionDetails(submissionId: string, optionalMeta?: any): Promise<ExtractedSubmission> {
     const cookies = await chrome.cookies.getAll({ domain: 'leetcode.com' });
     const sessionCookie = cookies.find(c => c.name === 'LEETCODE_SESSION');
     const csrfCookie = cookies.find(c => c.name === 'csrftoken');

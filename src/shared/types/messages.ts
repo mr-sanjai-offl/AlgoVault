@@ -132,5 +132,5 @@ export type ExtensionMessage =
   | { type: MessageType.EXPORT_DATA }
   | { type: MessageType.CLEAR_DATA }
   | { type: MessageType.GET_REPOS; payload?: { repos: RepoInfo[] } }
-  | { type: MessageType.SYNC_BY_ID; payload: { submissionId: string; platformId?: string } }
+  | { type: MessageType.SYNC_BY_ID; payload: { submissionId: string; platformId?: string; language?: string; runtime?: string; memory?: string; } }
   | { type: MessageType.START_BULK_SYNC; payload: { platformId: string } };

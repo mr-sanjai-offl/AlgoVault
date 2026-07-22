@@ -404,10 +404,12 @@ export async function handleMessage(
       }
 
       case MessageType.SYNC_BY_ID: {
-        const { submissionId, platformId } = message.payload;
+        const { submissionId, platformId, language, runtime, memory } = message.payload;
         const pId = platformId || 'leetcode';
         const platform = getPlatform(pId);
-        const payload = await platform.fetchSubmissionDetails(submissionId);
+        
+        // Pass optional metadata so the adapter doesn't have to scrape it
+        const payload = await platform.fetchSubmissionDetails(submissionId, { language, runtime, memory });
         (payload as any).platformId = pId;
         
         const dedupKey = await computeDedupKey(payload.titleSlug, payload.language, payload.solutionCode);

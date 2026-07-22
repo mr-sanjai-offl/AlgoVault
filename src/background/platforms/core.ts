@@ -27,7 +27,7 @@ export interface IPlatformAdapter {
   /**
    * Fetches the details of a single submission by its ID
    */
-  fetchSubmissionDetails(submissionId: string): Promise<ExtractedSubmission>;
+  fetchSubmissionDetails(submissionId: string, optionalMeta?: { language?: string; runtime?: string; memory?: string; }): Promise<ExtractedSubmission>;
 
   /**
    * Generator to fetch all past submissions for bulk syncing
