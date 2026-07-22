@@ -87,10 +87,27 @@ export function useSettings() {
       const response = await chrome.runtime.sendMessage({
         type: MessageType.CREATE_REPO,
         payload: { name, isPrivate }
-      }) as { success?: boolean, error?: string };
+      }) as { success?: boolean, error?: string, payload?: { repoInfo: RepoInfo } };
       
       if (response?.error) {
         throw new Error(response.error);
+      }
+      
+      if (response?.payload?.repoInfo) {
+        const newRepo = response.payload.repoInfo;
+        setRepos(prev => {
+          if (!prev.find(r => r.fullName === newRepo.fullName)) {
+            return [newRepo, ...prev];
+          }
+          return prev;
+        });
+        setConfig(prev => prev ? {
+          ...prev,
+          repoFullName: newRepo.fullName,
+          repoOwner: newRepo.owner,
+          repoName: newRepo.name,
+          branch: newRepo.defaultBranch
+        } : prev);
       }
       
       await fetchRepos();

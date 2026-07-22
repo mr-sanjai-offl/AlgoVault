@@ -17,15 +17,17 @@ export function SettingsPage() {
   
   const [showCreateRepo, setShowCreateRepo] = useState(false);
   const [newRepoName, setNewRepoName] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [createRepoError, setCreateRepoError] = useState('');
 
   const handleCreateRepo = async () => {
     if (!newRepoName.trim()) return;
     try {
       setCreateRepoError('');
-      await createRepo(newRepoName.trim(), false); // Public by default
+      await createRepo(newRepoName.trim(), isPrivate);
       setShowCreateRepo(false);
       setNewRepoName('');
+      setIsPrivate(false);
     } catch (err: any) {
       setCreateRepoError(err.message || 'Failed to create repository');
     }
@@ -166,6 +168,30 @@ export function SettingsPage() {
                 placeholder="e.g. algovault-solutions"
                 className="w-full bg-surface-container-lowest border border-outline-variant/10 rounded md px-2 py-1.5 text-code-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
               />
+              
+              <div className="flex items-center gap-3 mt-1">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="repoVisibility"
+                    checked={!isPrivate}
+                    onChange={() => setIsPrivate(false)}
+                    className="accent-primary"
+                  />
+                  <span className="text-[11px] font-medium text-on-surface">Public</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="repoVisibility"
+                    checked={isPrivate}
+                    onChange={() => setIsPrivate(true)}
+                    className="accent-primary"
+                  />
+                  <span className="text-[11px] font-medium text-on-surface-variant">Private</span>
+                </label>
+              </div>
+
               {createRepoError && (
                 <span className="text-error text-[10px] uppercase font-bold">{createRepoError}</span>
               )}

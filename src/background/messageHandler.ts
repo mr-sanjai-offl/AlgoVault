@@ -434,6 +434,19 @@ export async function handleMessage(
           const topics = ['data-structures', 'algorithms', 'leetcode', 'competitive-programming', 'interview-prep', 'algovault', 'codeforces', 'dsa'];
           await setRepoTopics(repo.owner.login, repo.name, topics);
           
+          // Overwrite the auto-generated README to be completely blank
+          try {
+            await batchCommitFiles(
+              repo.owner.login, 
+              repo.name, 
+              repo.default_branch, 
+              'chore: initialize blank readme', 
+              [{ path: 'README.md', contents: '' }]
+            );
+          } catch (e) {
+            console.warn('[AlgoVault] Failed to clear auto-generated README:', e);
+          }
+          
           // Update config to select this repo
           await setUserConfig({
             repoFullName: repo.full_name,
@@ -441,8 +454,14 @@ export async function handleMessage(
             repoName: repo.name,
             branch: repo.default_branch
           });
-          
-          respond({ success: true, payload: { repoFullName: repo.full_name } });
+          const repoInfo = {
+            fullName: repo.full_name,
+            name: repo.name,
+            owner: repo.owner.login,
+            defaultBranch: repo.default_branch,
+            private: repo.private
+          };
+          respond({ success: true, payload: { repoInfo } });
         } catch (error) {
           respond({ error: getErrorMessage(error) });
         }
