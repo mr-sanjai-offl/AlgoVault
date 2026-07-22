@@ -1,74 +1,270 @@
-import type { IPlatformAdapter } from './core';
+import { AlgoVaultError } from '@shared/errors/taxonomy';
 import type { ExtractedSubmission } from '@shared/types/submission';
-import { getUserConfig } from '../storage/configStore';
+import type { IPlatformAdapter } from './core';
 
-const CF_API = 'https://codeforces.com/api';
+// In-memory cache for problem metadata
+let problemsetCache: Record<string, { tags: string[]; rating: number | string }> | null = null;
+
+async function fetchProblemsetMetadata(): Promise<Record<string, { tags: string[]; rating: number | string }>> {
+  if (problemsetCache) return problemsetCache;
+
+  try {
+    const res = await fetch('https://codeforces.com/api/problemset.problems');
+    if (!res.ok) throw new Error('API fetch failed');
+    const data = await res.json();
+    if (data.status !== 'OK') throw new Error('API returned non-OK status');
+
+    const metaMap: Record<string, { tags: string[]; rating: number | string }> = {};
+    for (const p of data.result.problems) {
+      const key = `${p.contestId}-${p.index}`;
+      metaMap[key] = {
+        tags: p.tags || [],
+        rating: p.rating ?? 'Unrated',
+      };
+    }
+    problemsetCache = metaMap;
+    return metaMap;
+  } catch (e) {
+    console.warn('[AlgoVault] Failed to fetch CF problemset metadata', e);
+    return {};
+  }
+}
+
+function normalizeCodeforcesLanguage(lang: string): string {
+  const l = lang.toLowerCase();
+  if (l.includes('c++') || l.includes('g++')) return 'cpp';
+  if (l.includes('java') && !l.includes('javascript')) return 'java';
+  if (l.includes('python') || l.includes('pypy')) return 'python';
+  if (l.includes('c#')) return 'csharp';
+  if (l.includes('node') || l.includes('javascript')) return 'javascript';
+  if (l.includes('ruby')) return 'ruby';
+  if (l.includes('rust')) return 'rust';
+  if (l.includes('go')) return 'go';
+  if (l.includes('kotlin')) return 'kotlin';
+  if (l.includes('swift')) return 'swift';
+  if (l.includes('php')) return 'php';
+  if (l.includes('scala')) return 'scala';
+  if (l.includes('haskell')) return 'haskell';
+  if (l.includes('pascal')) return 'pascal';
+  if (l.includes('delphi')) return 'delphi';
+  return l.replace(/[^a-z0-9]/g, ''); // strip spaces and special chars
+}
 
 export const CodeforcesAdapter: IPlatformAdapter = {
   id: 'codeforces',
   name: 'Codeforces',
 
   async isConnected(): Promise<boolean> {
-    const config = await getUserConfig();
-    return !!config.codeforcesHandle;
+    try {
+      const username = await this.getUsername();
+      return !!username;
+    } catch {
+      return false;
+    }
   },
 
   async getUsername(): Promise<string> {
-    const config = await getUserConfig();
-    if (!config.codeforcesHandle) {
-      throw new Error('Codeforces handle not configured');
+    try {
+      const response = await fetch('https://codeforces.com/');
+      const html = await response.text();
+      // Match the profile link in the header: <a href="/profile/USERNAME">USERNAME</a>
+      const match = html.match(/<a href="\/profile\/([^"]+)">/);
+      if (match && match[1]) {
+        return match[1];
+      }
+      throw new Error('Codeforces username not found. Please ensure you are logged in to Codeforces.');
+    } catch (e: any) {
+      if (e instanceof AlgoVaultError) throw e;
+      throw new Error('Failed to fetch Codeforces username.');
     }
-    return config.codeforcesHandle;
   },
 
-  async fetchSubmissionDetails(submissionId: string): Promise<ExtractedSubmission> {
-    // Codeforces public API doesn't have a single submission endpoint, 
-    // nor does it expose source code. 
-    // This is a stub that will be filled if we scrape instead of using API.
-    throw new Error('Direct submission fetching via API is not supported on Codeforces without scraping.');
+  async fetchSubmissionDetails(submissionIdRaw: string): Promise<ExtractedSubmission> {
+    // For CF, submissionIdRaw needs to be contestId-submissionId
+    const [contestId, submissionId] = submissionIdRaw.split('-');
+    if (!contestId || !submissionId) {
+      throw new Error('Invalid Codeforces submission ID format. Expected contestId-submissionId.');
+    }
+
+    const url = `https://codeforces.com/contest/${contestId}/submission/${submissionId}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch submission page from Codeforces.');
+    }
+
+    const html = await response.text();
+    
+    // Extract code
+    const codeMatch = html.match(/<pre id="program-source-text"[^>]*>([\s\S]*?)<\/pre>/);
+    if (!codeMatch || !codeMatch[1]) {
+      throw new Error('Could not extract code from Codeforces submission page.');
+    }
+    
+    // Clean code (CF escapes HTML entities in the <pre> block)
+    let code = codeMatch[1];
+    code = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+    
+    // Extract problem metadata
+    const meta = await fetchProblemsetMetadata();
+    
+    // Extract problem name and index from page if possible, otherwise fallback
+    const problemNameMatch = html.match(/<a href="\/contest\/\d+\/problem\/([^"]+)">([^<]+)<\/a>/);
+    const index = problemNameMatch ? problemNameMatch[1] : 'Unknown';
+    const problemName = problemNameMatch ? problemNameMatch[2].trim() : 'Unknown Problem';
+    
+    // Extract Language
+    const langMatch = html.match(/<td>\s*Language:\s*<\/td>\s*<td>\s*([^<]+)\s*<\/td>/);
+    const language = langMatch ? langMatch[1].trim() : 'Unknown';
+    
+    // Extract runtime and memory
+    const timeMatch = html.match(/<i class="icon-time"><\/i>\s*([^<]+)<\/td>/);
+    const memMatch = html.match(/<i class="icon-picture"><\/i>\s*([^<]+)<\/td>/);
+    const runtime = timeMatch ? timeMatch[1].trim() : 'N/A';
+    const memory = memMatch ? memMatch[1].trim() : 'N/A';
+
+    // Fetch problem statement
+    let description = 'Please visit the problem link for the full statement.';
+    try {
+      const probUrl = `https://codeforces.com/contest/${contestId}/problem/${index}`;
+      const probRes = await fetch(probUrl);
+      if (probRes.ok) {
+        const probHtml = await probRes.text();
+        const startIdx = probHtml.indexOf('<div class="problem-statement">');
+        if (startIdx !== -1) {
+          const endIdx = probHtml.indexOf('<script type="text/javascript">', startIdx);
+          if (endIdx !== -1) {
+            description = probHtml.substring(startIdx, endIdx);
+            description = description.replace(/<\/div>\s*<\/div>\s*<\/div>\s*$/g, '');
+          } else {
+            description = probHtml.substring(startIdx, startIdx + 10000) + '...';
+          }
+        }
+      }
+    } catch (e) {
+       console.warn('Failed to fetch CF problem statement', e);
+    }
+
+    const problemMeta = meta[`${contestId}-${index}`] || { tags: [], rating: 'Unrated' };
+
+    return {
+      questionId: `${contestId}${index}`,
+      title: problemName,
+      titleSlug: `${contestId}-${index}`,
+      difficulty: problemMeta.rating.toString(),
+      description: description,
+      examples: '',
+      constraints: '',
+      tags: problemMeta.tags,
+      language: normalizeCodeforcesLanguage(language),
+      solutionCode: code,
+      runtime: runtime,
+      memory: memory,
+      url: `https://codeforces.com/contest/${contestId}/problem/${index}`,
+      timestamp: new Date().toISOString()
+    };
   },
 
   async *fetchAllPastSubmissions(): AsyncGenerator<ExtractedSubmission[], void, unknown> {
-    const handle = await this.getUsername();
+    const username = await this.getUsername();
+    if (!username) throw new Error('Not logged in to Codeforces');
+
+    const res = await fetch(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}&count=10000`);
+    if (!res.ok) throw new Error('Failed to fetch user submissions from Codeforces API');
+    const data = await res.json();
+    if (data.status !== 'OK') throw new Error('Codeforces API returned error');
+
+    const acceptedSubmissions = data.result.filter((s: any) => s.verdict === 'OK');
     
-    // Fetch all submissions for the user
-    const response = await fetch(`${CF_API}/user.status?handle=${handle}`);
-    const data = await response.json();
-    
-    if (data.status !== 'OK') {
-      throw new Error(`Codeforces API error: ${data.comment}`);
+    // Deduplicate: only keep newest accepted submission for each problem
+    const uniqueByProblem = new Map<string, any>();
+    for (const sub of acceptedSubmissions) {
+      // Problem uniquely identified by contestId and index
+      const key = `${sub.problem.contestId}-${sub.problem.index}-${sub.programmingLanguage}`;
+      // Submissions are returned newest first by API
+      if (!uniqueByProblem.has(key)) {
+        uniqueByProblem.set(key, sub);
+      }
     }
-
-    const submissions = data.result;
     
-    // Filter for accepted submissions
-    const accepted = submissions.filter((s: any) => s.verdict === 'OK');
+    const pending = Array.from(uniqueByProblem.values());
+    const meta = await fetchProblemsetMetadata();
     
-    // We'll yield in batches of 50
-    const batchSize = 50;
-    for (let i = 0; i < accepted.length; i += batchSize) {
-      const batch = accepted.slice(i, i + batchSize);
+    const BATCH_SIZE = 10;
+    
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const chunk = pending.slice(i, i + BATCH_SIZE);
+      const batch: ExtractedSubmission[] = [];
       
-      const extractedBatch: ExtractedSubmission[] = batch.map((sub: any) => ({
-        questionId: sub.problem.contestId ? `${sub.problem.contestId}${sub.problem.index}` : sub.problem.name,
-        title: sub.problem.name,
-        titleSlug: sub.problem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        difficulty: sub.problem.rating ? sub.problem.rating.toString() : 'Unknown',
-        description: 'Codeforces problem description not available via API.',
-        examples: '',
-        constraints: '',
-        tags: sub.problem.tags || ['General'],
-        language: sub.programmingLanguage,
-        solutionCode: '// Source code not accessible via Codeforces public API.',
-        runtime: `${sub.timeConsumedMillis} ms`,
-        memory: `${(sub.memoryConsumedBytes / (1024 * 1024)).toFixed(2)} MB`,
-        url: sub.problem.contestId 
-          ? `https://codeforces.com/contest/${sub.problem.contestId}/problem/${sub.problem.index}`
-          : `https://codeforces.com/problemset/problem/${sub.problem.contestId}/${sub.problem.index}`,
-        timestamp: new Date(sub.creationTimeSeconds * 1000).toISOString(),
-      }));
+      for (const sub of chunk) {
+        const contestId = sub.problem.contestId;
+        const index = sub.problem.index;
+        const problemKey = `${contestId}-${index}`;
+        const problemMeta = meta[problemKey] || { tags: [], rating: 'Unrated' };
+        
+        try {
+          // Fetch the submission HTML to get the code
+          const url = `https://codeforces.com/contest/${contestId}/submission/${sub.id}`;
+          const htmlRes = await fetch(url);
+          if (!htmlRes.ok) throw new Error('Fetch failed');
+          const html = await htmlRes.text();
+          
+          const codeMatch = html.match(/<pre id="program-source-text"[^>]*>([\s\S]*?)<\/pre>/);
+          if (!codeMatch || !codeMatch[1]) throw new Error('Code not found in HTML');
+          
+          let code = codeMatch[1];
+          code = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+          
+          // Fetch problem statement
+          let description = 'Please visit the problem link for the full statement.';
+          try {
+            const probUrl = `https://codeforces.com/contest/${contestId}/problem/${index}`;
+            const probRes = await fetch(probUrl);
+            if (probRes.ok) {
+              const probHtml = await probRes.text();
+              const startIdx = probHtml.indexOf('<div class="problem-statement">');
+              if (startIdx !== -1) {
+                // Find a safe end bound, usually scripts start right after the content area
+                const endIdx = probHtml.indexOf('<script type="text/javascript">', startIdx);
+                if (endIdx !== -1) {
+                  description = probHtml.substring(startIdx, endIdx);
+                  // Clean up stray closing divs that might have been caught
+                  description = description.replace(/<\/div>\s*<\/div>\s*<\/div>\s*$/g, '');
+                } else {
+                  description = probHtml.substring(startIdx, startIdx + 10000) + '...';
+                }
+              }
+            }
+          } catch (e) {
+             console.warn('Failed to fetch CF problem statement', e);
+          }
 
-      yield extractedBatch;
+          batch.push({
+            questionId: `${contestId}${index}`,
+            title: sub.problem.name,
+            titleSlug: `${contestId}-${index}`,
+            difficulty: problemMeta.rating.toString(),
+            description: description,
+            examples: '',
+            constraints: '',
+            tags: sub.problem.tags || problemMeta.tags,
+            language: normalizeCodeforcesLanguage(sub.programmingLanguage),
+            solutionCode: code,
+            runtime: `${sub.timeConsumedMillis} ms`,
+            memory: `${(sub.memoryConsumedBytes / 1024).toFixed(0)} KB`,
+            url: `https://codeforces.com/contest/${contestId}/problem/${index}`,
+            timestamp: new Date(sub.creationTimeSeconds * 1000).toISOString()
+          });
+          
+          // Small delay to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 400));
+        } catch (e) {
+          console.warn(`[AlgoVault] Failed to fetch Codeforces submission ${sub.id}`, e);
+        }
+      }
+      
+      if (batch.length > 0) {
+        yield batch;
+      }
     }
   }
 };

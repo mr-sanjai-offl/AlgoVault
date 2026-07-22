@@ -49,6 +49,12 @@ ${problemRows}
   <img src="https://leetcard.jacoblin.cool/${username}?theme=dark&font=Poppins&ext=heatmap" width="100%" />
 </p>
 `;
+  } else if (platformId === 'codeforces') {
+    branding = `
+<p align="center">
+  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${username}&theme=dark" width="100%" />
+</p>
+`;
   }
 
   const content = `# 🚀 ${platformId ? platformId.charAt(0).toUpperCase() + platformId.slice(1) : 'Data Structures & Algorithms'} Master Repository
