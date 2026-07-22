@@ -30,7 +30,7 @@ import {
 import { computeDedupKey } from '@shared/utils/hash';
 import { getUserRepos, batchCommitFiles, getFileContent } from './github/client';
 import { buildReadme } from './markdown/readmeBuilder';
-import { buildDashboardSection, mergeDashboard } from './markdown/dashboardBuilder';
+import { buildDashboardSection, mergeDashboard, buildRootDashboardSection } from './markdown/dashboardBuilder';
 import { LeetCodeAdapter } from './platforms/leetcode';
 import { getPlatform } from './platforms';
 
@@ -103,10 +103,15 @@ async function notifySyncFailed(jobId: string, title: string, error: string) {
 
 // --- SYNC LOGIC ---
 
+const activeJobs = new Set<string>();
+
 async function processJob(jobId: string) {
-  const job = await getJob(jobId);
-  if (!job) return;
+  if (activeJobs.has(jobId)) return;
   
+  const job = await getJob(jobId);
+  if (!job || job.status === 'success') return;
+  
+  activeJobs.add(jobId);
   await updateJobStatus(jobId, 'in_progress');
   await broadcastStatus(jobId, 'in_progress', 'Preparing files...');
   
@@ -179,11 +184,17 @@ async function processJob(jobId: string) {
     const platformReadmePath = `${platform.name}/README.md`;
     const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
     const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
+    
+    // 7.5 Build Root README
+    const rootDashboardSection = buildRootDashboardSection(updatedManifest);
+    const existingRootReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+    const finalRootReadme = existingRootReadme ? mergeDashboard(existingRootReadme, rootDashboardSection) : rootDashboardSection;
 
     const files = [
       { path: solutionPath, contents: sub.solutionCode },
       { path: readmePath, contents: problemReadme },
       { path: platformReadmePath, contents: finalReadme },
+      { path: 'README.md', contents: finalRootReadme },
       { path: MANIFEST_PATH, contents: serializeManifest(updatedManifest) },
     ];
 
@@ -211,6 +222,8 @@ async function processJob(jobId: string) {
       await markFailed(jobId, errorMsg);
       await notifySyncFailed(jobId, sub.title, errorMsg);
     }
+  } finally {
+    activeJobs.delete(jobId);
   }
 }
 
@@ -275,7 +288,12 @@ async function handleBulkSync(platformId: string) {
       const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
       const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
       
+      const rootDashboardSection = buildRootDashboardSection(currentManifest);
+      const existingRootReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+      const finalRootReadme = existingRootReadme ? mergeDashboard(existingRootReadme, rootDashboardSection) : rootDashboardSection;
+      
       filesToCommit.push({ path: platformReadmePath, contents: finalReadme });
+      filesToCommit.push({ path: 'README.md', contents: finalRootReadme });
       filesToCommit.push({ path: MANIFEST_PATH, contents: serializeManifest(currentManifest) });
       
       // Deduplicate files by path (keep the last one, which is the most recent in our loop if ordered correctly)

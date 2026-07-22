@@ -46,7 +46,7 @@ ${problemRows}
   if (platformId === 'leetcode') {
     branding = `
 <p align="center">
-  <img src="https://leetcard.jacoblin.cool/${username}?theme=dark&font=Poppins&ext=heatmap" width="100%" />
+  <img src="https://github-readme-leetcode-card.romitsagu.com/${username}?theme=tokyonight&show=graph,recent" width="100%" />
 </p>
 `;
   } else if (platformId === 'codeforces') {
@@ -84,4 +84,40 @@ export function mergeDashboard(existingReadme: string, newSection: string): stri
   const before = existingReadme.slice(0, startIdx);
   const after = existingReadme.slice(endIdx + DASHBOARD_MARKERS.END.length);
   return before + newSection + after;
+}
+
+export function buildRootDashboardSection(manifest: any): string {
+  const lcUsername = manifest.platforms.leetcode?.username || 'user';
+  const cfUsername = manifest.platforms.codeforces?.username || 'user';
+  
+  const content = `# 🏆 Ultimate Competitive Programming & DSA Vault
+
+Welcome to my **Master Repository** for Data Structures, Algorithms, and Competitive Programming! 🚀
+
+This repository contains my personal library of highly optimized, strictly tested, and structured solutions to problems across multiple platforms. It is designed to track my progress, document optimal coding patterns, and demonstrate technical excellence in problem-solving.
+
+## 📊 Real-Time Performance Analytics
+
+<p align="center">
+  <img src="https://github-readme-leetcode-card.romitsagu.com/${lcUsername}?theme=tokyonight&show=graph,recent" width="100%" />
+</p>
+
+<br />
+
+<p align="center">
+  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${cfUsername}&theme=dark" width="100%" />
+</p>
+
+## 📂 Repository Structure
+
+- **[LeetCode](./LeetCode)**: Topic-wise FAANG interview preparation and algorithmic challenges.
+- **[Codeforces](./Codeforces)**: Competitive programming contest solutions focusing on math, greedies, and advanced data structures.
+
+---
+<p align="center">
+  <i>Auto-generated & continuously synced by <b>AlgoVault</b>. Building technical excellence through consistent problem solving.</i>
+</p>
+`;
+
+  return `${DASHBOARD_MARKERS.START}\n${content}\n${DASHBOARD_MARKERS.END}`;
 }

@@ -107,6 +107,10 @@ function checkCodeforcesSubmissions() {
 async function triggerSync(rawSubmissionId: string, language: string, runtime: string, memory: string) {
   if (isInvalidated() || inFlightSubmissionId === rawSubmissionId) return;
 
+  inFlightSubmissionId = rawSubmissionId;
+  const parts = rawSubmissionId.split('-');
+  lastProcessedSubmissionId = parts[parts.length - 1];
+
   // Get autoSync preference
   let config: any = { autoSync: false };
   try {
@@ -116,11 +120,13 @@ async function triggerSync(rawSubmissionId: string, language: string, runtime: s
     }
   } catch (err) {
     console.warn('[AlgoVault] Failed to get config', err);
+    inFlightSubmissionId = '';
     return;
   }
 
   if (!config.autoSync) {
     console.log('[AlgoVault] Codeforces auto-sync is disabled in settings.');
+    inFlightSubmissionId = '';
     return;
   }
 
@@ -129,12 +135,9 @@ async function triggerSync(rawSubmissionId: string, language: string, runtime: s
   const processed = storage[STORAGE_KEYS.PROCESSED_KEYS] || {};
   
   if (processed[rawSubmissionId]) {
+    inFlightSubmissionId = '';
     return;
   }
-
-  inFlightSubmissionId = rawSubmissionId;
-  const parts = rawSubmissionId.split('-');
-  lastProcessedSubmissionId = parts[parts.length - 1];
 
   try {
     await safeSendMessage({
