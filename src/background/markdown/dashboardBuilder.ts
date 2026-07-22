@@ -43,16 +43,17 @@ ${problemRows}
   const username = stats.username || 'mr_sanjai_offl';
 
   let branding = '';
+  const ts = Date.now();
   if (platformId === 'leetcode') {
     branding = `
 <p align="center">
-  <img src="https://github-readme-leetcode-card.romitsagu.com/${username}?theme=tokyonight&show=graph,recent" width="100%" />
+  <img src="https://github-readme-leetcode-card.romitsagu.com/${username}?theme=tokyonight&show=graph,recent&v=${ts}" width="100%" />
 </p>
 `;
   } else if (platformId === 'codeforces') {
     branding = `
 <p align="center">
-  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${username}&theme=dark" width="100%" />
+  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${username}&theme=dark&v=${ts}" width="100%" />
 </p>
 `;
   }
@@ -93,11 +94,12 @@ export function buildRootDashboardSection(manifest: any): string {
   const lcUsername = manifest.platforms.leetcode?.username || 'user';
   const cfUsername = manifest.platforms.codeforces?.username || 'user';
   
+  const ts = Date.now();
   let analyticsSection = '';
   if (hasLeetCode) {
     analyticsSection += `
 <p align="center">
-  <img src="https://github-readme-leetcode-card.romitsagu.com/${lcUsername}?theme=tokyonight&show=graph,recent" width="100%" />
+  <img src="https://github-readme-leetcode-card.romitsagu.com/${lcUsername}?theme=tokyonight&show=graph,recent&v=${ts}" width="100%" />
 </p>
 `;
   }
@@ -106,7 +108,7 @@ export function buildRootDashboardSection(manifest: any): string {
     if (hasLeetCode) analyticsSection += `\n<br />\n`;
     analyticsSection += `
 <p align="center">
-  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${cfUsername}&theme=dark" width="100%" />
+  <img src="https://codeforces-stats-vlx.vercel.app/api/card?username=${cfUsername}&theme=dark&v=${ts}" width="100%" />
 </p>
 `;
   }
