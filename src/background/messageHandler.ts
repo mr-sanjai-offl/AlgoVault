@@ -158,11 +158,11 @@ async function processJob(jobId: string) {
     if (!updatedManifest.platforms[platformKey]) {
       updatedManifest.platforms[platformKey] = { submissions: {} };
     }
-    if (platformId === 'leetcode') {
-      const lc = updatedManifest.platforms.leetcode;
-      if (lc && !lc.username) {
+    if (platformId) {
+      const pData = updatedManifest.platforms[platformKey];
+      if (pData && !pData.username) {
         try {
-          lc.username = await LeetCodeAdapter.getUsername();
+          pData.username = await platform.getUsername();
         } catch { /* non-critical — username is for stats card only */ }
       }
     }
@@ -234,11 +234,11 @@ async function handleBulkSync(platformId: string) {
     if (!currentManifest.platforms[platformKey]) {
       currentManifest.platforms[platformKey] = { submissions: {} };
     }
-    if (platformId === 'leetcode') {
-      const lc = currentManifest.platforms.leetcode;
-      if (lc && !lc.username) {
+    if (platformId) {
+      const pData = currentManifest.platforms[platformKey];
+      if (pData && !pData.username) {
         try {
-          lc.username = await LeetCodeAdapter.getUsername();
+          pData.username = await platform.getUsername();
         } catch { /* non-critical — username is for stats card only */ }
       }
     }
@@ -404,8 +404,12 @@ export async function handleMessage(
       }
 
       case MessageType.SYNC_BY_ID: {
-        const { submissionId } = message.payload;
-        const payload = await LeetCodeAdapter.fetchSubmissionDetails(submissionId);
+        const { submissionId, platformId } = message.payload;
+        const pId = platformId || 'leetcode';
+        const platform = getPlatform(pId);
+        const payload = await platform.fetchSubmissionDetails(submissionId);
+        (payload as any).platformId = pId;
+        
         const dedupKey = await computeDedupKey(payload.titleSlug, payload.language, payload.solutionCode);
         const job = await enqueueJob(dedupKey, payload);
         processJob(job.id);

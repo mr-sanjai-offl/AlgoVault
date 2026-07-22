@@ -65,22 +65,29 @@ function checkCodeforcesSubmissions() {
     const verdictText = verdictCell.textContent?.trim().toLowerCase() || '';
 
     // If accepted
-    if (verdictText.includes('accepted')) {
+    if (verdictText.includes('accepted') || verdictText.includes('pretests passed')) {
+      console.log(`[AlgoVault] Found accepted CF submission: ${submissionId}`);
       // Find the contest ID from the problem link or page URL
       const problemLink = row.querySelector('a[href*="/problem/"]');
-      if (!problemLink) continue;
+      if (!problemLink) {
+        console.warn(`[AlgoVault] No problem link found for submission ${submissionId}`);
+        continue;
+      }
       
       const href = problemLink.getAttribute('href') || '';
       // href looks like /contest/123/problem/A
-      const match = href.match(/\/contest\/(\d+)\/problem\/([^/]+)/);
+      const match = href.match(/\/contest\/(\d+)\/problem\/([^/]+)/) || href.match(/\/problemset\/problem\/(\d+)\/([^/]+)/);
       if (match) {
         const contestId = match[1];
+        const index = match[2];
         
-        // Final raw submission ID for the adapter: contestId-submissionId
-        const rawSubmissionId = `${contestId}-${submissionId}`;
-        
+        // Final raw submission ID for the adapter: contestId-index-submissionId
+        const rawSubmissionId = `${contestId}-${index}-${submissionId}`;
+        console.log(`[AlgoVault] Triggering sync for ${rawSubmissionId}`);
         triggerSync(rawSubmissionId);
         break; // Only process one at a time
+      } else {
+        console.warn(`[AlgoVault] Could not extract contest ID from ${href}`);
       }
     }
   }
@@ -101,7 +108,10 @@ async function triggerSync(rawSubmissionId: string) {
     return;
   }
 
-  if (!config.autoSync) return;
+  if (!config.autoSync) {
+    console.log('[AlgoVault] Codeforces auto-sync is disabled in settings.');
+    return;
+  }
 
   // Check if recently processed
   const storage = await safeGetStorage(STORAGE_KEYS.PROCESSED_KEYS);
@@ -112,7 +122,8 @@ async function triggerSync(rawSubmissionId: string) {
   }
 
   inFlightSubmissionId = rawSubmissionId;
-  lastProcessedSubmissionId = rawSubmissionId.split('-')[1];
+  const parts = rawSubmissionId.split('-');
+  lastProcessedSubmissionId = parts[parts.length - 1];
 
   try {
     await safeSendMessage({

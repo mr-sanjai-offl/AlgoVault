@@ -3,9 +3,8 @@ import type { ExtractedSubmission } from '@shared/types/submission';
 import type { IPlatformAdapter } from './core';
 
 // In-memory cache for problem metadata
-let problemsetCache: Record<string, { tags: string[]; rating: number | string }> | null = null;
-
-async function fetchProblemsetMetadata(): Promise<Record<string, { tags: string[]; rating: number | string }>> {
+let problemsetCache: Record<string, { name: string; tags: string[]; rating: number | string }> | null = null;
+async function fetchProblemsetMetadata(): Promise<Record<string, { name: string; tags: string[]; rating: number | string }>> {
   if (problemsetCache) return problemsetCache;
 
   try {
@@ -14,10 +13,11 @@ async function fetchProblemsetMetadata(): Promise<Record<string, { tags: string[
     const data = await res.json();
     if (data.status !== 'OK') throw new Error('API returned non-OK status');
 
-    const metaMap: Record<string, { tags: string[]; rating: number | string }> = {};
+    const metaMap: Record<string, { name: string; tags: string[]; rating: number | string }> = {};
     for (const p of data.result.problems) {
       const key = `${p.contestId}-${p.index}`;
       metaMap[key] = {
+        name: p.name,
         tags: p.tags || [],
         rating: p.rating ?? 'Unrated',
       };
@@ -80,10 +80,16 @@ export const CodeforcesAdapter: IPlatformAdapter = {
   },
 
   async fetchSubmissionDetails(submissionIdRaw: string): Promise<ExtractedSubmission> {
-    // For CF, submissionIdRaw needs to be contestId-submissionId
-    const [contestId, submissionId] = submissionIdRaw.split('-');
-    if (!contestId || !submissionId) {
-      throw new Error('Invalid Codeforces submission ID format. Expected contestId-submissionId.');
+    const parts = submissionIdRaw.split('-');
+    let contestId = '', index = '', submissionId = '';
+    
+    if (parts.length === 3) {
+      [contestId, index, submissionId] = parts;
+    } else if (parts.length === 2) {
+      [contestId, submissionId] = parts;
+      index = 'Unknown';
+    } else {
+      throw new Error('Invalid Codeforces submission ID format.');
     }
 
     const url = `https://codeforces.com/contest/${contestId}/submission/${submissionId}`;
@@ -106,11 +112,16 @@ export const CodeforcesAdapter: IPlatformAdapter = {
     
     // Extract problem metadata
     const meta = await fetchProblemsetMetadata();
+    const problemMeta = meta[`${contestId}-${index}`] || { name: 'Unknown Problem', tags: [], rating: 'Unrated' };
     
-    // Extract problem name and index from page if possible, otherwise fallback
-    const problemNameMatch = html.match(/<a href="\/contest\/\d+\/problem\/([^"]+)">([^<]+)<\/a>/);
-    const index = problemNameMatch ? problemNameMatch[1] : 'Unknown';
-    const problemName = problemNameMatch ? problemNameMatch[2].trim() : 'Unknown Problem';
+    // Fallback if index wasn't passed via rawId
+    if (index === 'Unknown') {
+      const problemNameMatch = html.match(/<a href="\/contest\/\d+\/problem\/([^"]+)">([^<]+)<\/a>/);
+      index = problemNameMatch ? problemNameMatch[1] : 'Unknown';
+      if (problemNameMatch) problemMeta.name = problemNameMatch[2].trim();
+    }
+    
+    const problemName = problemMeta.name;
     
     // Extract Language
     const langMatch = html.match(/<td>\s*Language:\s*<\/td>\s*<td>\s*([^<]+)\s*<\/td>/);
@@ -146,8 +157,6 @@ export const CodeforcesAdapter: IPlatformAdapter = {
     } catch (e) {
        console.warn('Failed to fetch CF problem statement', e);
     }
-
-    const problemMeta = meta[`${contestId}-${index}`] || { tags: [], rating: 'Unrated' };
 
     return {
       questionId: `${contestId}${index}`,
@@ -202,7 +211,7 @@ export const CodeforcesAdapter: IPlatformAdapter = {
         const contestId = sub.problem.contestId;
         const index = sub.problem.index;
         const problemKey = `${contestId}-${index}`;
-        const problemMeta = meta[problemKey] || { tags: [], rating: 'Unrated' };
+        const problemMeta = meta[problemKey] || { name: sub.problem.name, tags: [], rating: 'Unrated' };
         
         try {
           // Fetch the submission HTML to get the code
