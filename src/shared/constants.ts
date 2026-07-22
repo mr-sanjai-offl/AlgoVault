@@ -8,7 +8,6 @@ export const STORE_ERROR_LOG = 'error_log';
 export const STORAGE_KEYS = {
   VAULT_KEY: 'vault_key',
   GITHUB_TOKEN: 'github_token',
-  OPENROUTER_KEY: 'openrouter_key',
   AUTH_STATE: 'auth_state',
   USER_CONFIG: 'user_config',
   PROCESSED_KEYS: 'processed_keys',
@@ -26,20 +25,16 @@ export const API = {
   GITHUB_API: 'https://api.github.com',
   GITHUB_GRAPHQL: 'https://api.github.com/graphql',
   AUTH_PROXY: import.meta.env.VITE_AUTH_PROXY_URL as string || '',
-  OPENROUTER_BASE: 'https://openrouter.ai/api/v1',
-  OPENROUTER_COMPLETIONS: 'https://openrouter.ai/api/v1/chat/completions',
 } as const;
 
 export const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string || '';
 
 export const RETRY = {
-  MAX_NETWORK_RETRIES: 5,
-  MAX_AI_RETRIES: 3,
+  MAX_ATTEMPTS: 3,
   BASE_DELAY_MS: 1000,
-  MAX_DELAY_MS: 60000,
-  QUEUE_ALARM_INTERVAL_MINUTES: 5,
+  QUEUE_INTERVAL_MIN: 5,
   MAX_QUEUE_SIZE: 100,
-  PROCESSED_KEYS_TTL_MS: 24 * 60 * 60 * 1000,
+  PROCESSED_KEYS_TTL_MS: 7 * 24 * 60 * 60 * 1000, // 7 days
 } as const;
 
 export const ALARM_NAMES = {

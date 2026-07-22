@@ -1,4 +1,4 @@
-import type { Manifest, ManifestProblem } from '@shared/types/manifest';
+import type { Manifest, ManifestProblem, PlatformManifest } from '@shared/types/manifest';
 import { createEmptyManifest } from '@shared/types/manifest';
 import type { SerializedSubmission } from '@shared/types/submission';
 import type { StoredSubmission } from '@shared/types/submission';
@@ -20,9 +20,9 @@ export async function fetchManifest(
 
     const parsed = JSON.parse(raw) as Manifest;
 
-    // Basic validation
-    if (!parsed.version || !parsed.submissions) {
-      console.warn('[AlgoVault] Invalid manifest format, starting fresh');
+    // Basic validation for v3.0.0
+    if (parsed.version !== '3.0.0' || !parsed.platforms) {
+      console.warn('[AlgoVault] Invalid manifest format or old version, starting fresh v3.0.0');
       return createEmptyManifest();
     }
 
@@ -40,8 +40,16 @@ export function mergeSubmission(
   sub: SerializedSubmission,
   githubPath: string,
   langKey: string,
+  platformId: string,
 ): Manifest {
-  const existing = manifest.submissions[sub.titleSlug];
+  // Ensure platform namespace exists
+  const platforms = { ...manifest.platforms };
+  if (!platforms[platformId as keyof typeof platforms]) {
+    (platforms as any)[platformId] = { submissions: {} };
+  }
+  
+  const platformManifest = platforms[platformId as keyof typeof platforms] as PlatformManifest;
+  const existing = platformManifest.submissions[sub.titleSlug];
 
   const problem: ManifestProblem = existing
     ? {
@@ -58,7 +66,7 @@ export function mergeSubmission(
         questionId: sub.questionId,
         title: sub.title,
         titleSlug: sub.titleSlug,
-        difficulty: sub.difficulty as 'Easy' | 'Medium' | 'Hard',
+        difficulty: sub.difficulty,
         tags: sub.tags.length > 0 ? sub.tags : ['General'],
         solutions: {},
       };
@@ -70,81 +78,102 @@ export function mergeSubmission(
     githubPath,
   };
 
+  const updatedPlatformManifest: PlatformManifest = {
+    ...platformManifest,
+    submissions: {
+      ...platformManifest.submissions,
+      [sub.titleSlug]: problem,
+    }
+  };
+
   return {
     ...manifest,
     lastUpdated: new Date().toISOString(),
-    submissions: {
-      ...manifest.submissions,
-      [sub.titleSlug]: problem,
-    },
+    platforms: {
+      ...platforms,
+      [platformId]: updatedPlatformManifest,
+    }
   };
 }
 
 // --- STATS CONVERSION ---
 
-export function manifestToStats(manifest: Manifest): StatsPayload {
-  const problems = Object.values(manifest.submissions);
-
-  const total = problems.length;
-  const easy = problems.filter((p) => p.difficulty === 'Easy').length;
-  const medium = problems.filter((p) => p.difficulty === 'Medium').length;
-  const hard = problems.filter((p) => p.difficulty === 'Hard').length;
+export function manifestToStats(manifest: Manifest, platformId?: string): StatsPayload {
+  let total = 0;
+  let easy = 0;
+  let medium = 0;
+  let hard = 0;
 
   const byLanguage: Record<string, number> = {};
   const byTopic: Record<string, number> = {};
   const groupedSubmissions: Record<string, StoredSubmission[]> = {};
   const allDates: string[] = [];
+  const allSolutions: any[] = [];
+  
+  // Aggregate across platforms
+  const platformsToProcess = platformId 
+    ? [platformId].filter(id => manifest.platforms[id as keyof typeof manifest.platforms]) 
+    : Object.keys(manifest.platforms);
 
-  for (const problem of problems) {
-    const topic = problem.tags[0] || 'General';
-    byTopic[topic] = (byTopic[topic] ?? 0) + 1;
+  for (const pId of platformsToProcess) {
+    const platformManifest = (manifest.platforms as any)[pId] as PlatformManifest;
+    const problems = Object.values(platformManifest.submissions);
+    total += problems.length;
+    
+    for (const problem of problems) {
+      if (problem.difficulty === 'Easy') easy++;
+      else if (problem.difficulty === 'Medium') medium++;
+      else if (problem.difficulty === 'Hard') hard++;
+      // Codeforces ratings aren't added to easy/med/hard for now
+      
+      const topic = problem.tags[0] || 'General';
+      byTopic[topic] = (byTopic[topic] ?? 0) + 1;
 
-    // Find the latest solution for this problem (used as the representative row)
-    const solutions = Object.entries(problem.solutions);
-    let latestSyncedAt = 0;
-    let latestLang = '';
+      // Find the latest solution for this problem (used as the representative row)
+      const solutions = Object.entries(problem.solutions);
+      let latestSyncedAt = 0;
+      let latestLang = '';
 
-    for (const [lang, sol] of solutions) {
-      byLanguage[lang] = (byLanguage[lang] ?? 0) + 1;
-      allDates.push(new Date(sol.syncedAt).toISOString());
-      if (sol.syncedAt > latestSyncedAt) {
-        latestSyncedAt = sol.syncedAt;
-        latestLang = lang;
+      for (const [lang, sol] of solutions) {
+        byLanguage[lang] = (byLanguage[lang] ?? 0) + 1;
+        allDates.push(new Date(sol.syncedAt).toISOString());
+        
+        allSolutions.push({
+          title: problem.title,
+          difficulty: problem.difficulty,
+          syncedAt: sol.syncedAt,
+        });
+
+        if (sol.syncedAt > latestSyncedAt) {
+          latestSyncedAt = sol.syncedAt;
+          latestLang = lang;
+        }
       }
+
+      // Build a StoredSubmission-compatible object for dashboardBuilder
+      const latestSol = problem.solutions[latestLang];
+      const representative: StoredSubmission = {
+        id: problem.titleSlug,
+        questionId: problem.questionId,
+        problemSlug: problem.titleSlug,
+        title: problem.title,
+        difficulty: problem.difficulty as any,
+        language: latestLang,
+        tags: problem.tags,
+        runtime: latestSol?.runtime ?? '',
+        memory: latestSol?.memory ?? '',
+        syncedAt: latestSyncedAt,
+        githubPath: latestSol?.githubPath ?? `${topic}/${problem.title}/`,
+        status: 'synced',
+      };
+
+      if (!groupedSubmissions[topic]) groupedSubmissions[topic] = [];
+      groupedSubmissions[topic].push(representative);
     }
-
-    // Build a StoredSubmission-compatible object for dashboardBuilder
-    const latestSol = problem.solutions[latestLang];
-    const representative: StoredSubmission = {
-      id: problem.titleSlug,
-      questionId: problem.questionId,
-      problemSlug: problem.titleSlug,
-      title: problem.title,
-      difficulty: problem.difficulty,
-      language: latestLang,
-      tags: problem.tags,
-      runtime: latestSol?.runtime ?? '',
-      memory: latestSol?.memory ?? '',
-      syncedAt: latestSyncedAt,
-      githubPath: latestSol?.githubPath ?? `${topic}/${problem.title}/`,
-      status: 'synced',
-    };
-
-    if (!groupedSubmissions[topic]) groupedSubmissions[topic] = [];
-    groupedSubmissions[topic].push(representative);
   }
 
-  const { current: currentStreak, longest: longestStreak } =
-    computeStreak(allDates);
+  const { current: currentStreak, longest: longestStreak } = computeStreak(allDates);
 
-  // Find last solved across all problems and solutions
-  const allSolutions = problems.flatMap((p) =>
-    Object.values(p.solutions).map((s) => ({
-      title: p.title,
-      difficulty: p.difficulty,
-      syncedAt: s.syncedAt,
-    })),
-  );
   allSolutions.sort((a, b) => b.syncedAt - a.syncedAt);
 
   const lastSolved =
@@ -160,8 +189,16 @@ export function manifestToStats(manifest: Manifest): StatsPayload {
         }
       : undefined;
 
+  let username = 'user';
+  if (platformId && manifest.platforms[platformId as keyof typeof manifest.platforms]?.username) {
+    username = manifest.platforms[platformId as keyof typeof manifest.platforms]!.username!;
+  } else {
+    username = manifest.platforms.leetcode?.username || 
+               manifest.platforms.codeforces?.username || 'user';
+  }
+
   return {
-    username: manifest.username,
+    username,
     total,
     easy,
     medium,

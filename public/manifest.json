@@ -15,8 +15,8 @@
   ],
   "host_permissions": [
     "https://leetcode.com/*",
+    "https://codeforces.com/*",
     "https://api.github.com/*",
-    "https://openrouter.ai/*",
     "https://github.com/login/*"
   ],
   "background": {
@@ -25,7 +25,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://leetcode.com/*"],
+      "matches": [
+        "https://leetcode.com/*",
+        "https://codeforces.com/*"
+      ],
       "js": ["content-loader.js"],
       "run_at": "document_idle",
       "world": "ISOLATED"
@@ -34,7 +37,10 @@
   "web_accessible_resources": [
     {
       "resources": ["content.js", "assets/*"],
-      "matches": ["https://leetcode.com/*"]
+      "matches": [
+        "https://leetcode.com/*",
+        "https://codeforces.com/*"
+      ]
     }
   ],
   "action": {

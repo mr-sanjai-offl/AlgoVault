@@ -84,26 +84,18 @@ export class AlgoVaultError extends Error {
     );
   }
 
-  static aiGenerationFailed(message: string): AlgoVaultError {
+  static leetCodeNotLoggedIn(): AlgoVaultError {
     return new AlgoVaultError(
-      ErrorCode.AI_GENERATION_FAILED,
-      `AI generation failed: ${message}`,
-      true,
+      ErrorCode.LEETCODE_NOT_LOGGED_IN,
+      'Please log in to LeetCode first.',
+      false,
     );
   }
 
-  static aiSchemaValidation(message: string): AlgoVaultError {
+  static leetCodeApiError(message: string): AlgoVaultError {
     return new AlgoVaultError(
-      ErrorCode.AI_SCHEMA_VALIDATION_FAILED,
-      `AI response validation failed: ${message}`,
-      true,
-    );
-  }
-
-  static aiKeyInvalid(): AlgoVaultError {
-    return new AlgoVaultError(
-      ErrorCode.AI_KEY_INVALID,
-      'OpenRouter API key is invalid. Check your settings.',
+      ErrorCode.LEETCODE_API_ERROR,
+      message,
       false,
     );
   }

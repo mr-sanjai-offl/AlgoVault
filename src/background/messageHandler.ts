@@ -28,10 +28,11 @@ import {
   incrementAttempts
 } from './storage/indexedDb';
 import { computeDedupKey } from '@shared/utils/hash';
-import { getUserRepos, batchCommitFiles, getFileContent } from './github/client';
+import { getUserRepos, batchCommitFiles, getFileContent, createRepository, setRepoTopics } from './github/client';
 import { buildReadme } from './markdown/readmeBuilder';
-import { buildDashboardSection, mergeDashboard } from './markdown/dashboardBuilder';
-import { fetchSubmissionDetails } from './leetcode/api';
+import { buildDashboardSection, mergeDashboard, buildRootDashboardSection } from './markdown/dashboardBuilder';
+import { LeetCodeAdapter } from './platforms/leetcode';
+import { getPlatform } from './platforms';
 
 type SendResponse = (response: unknown) => void;
 
@@ -102,10 +103,15 @@ async function notifySyncFailed(jobId: string, title: string, error: string) {
 
 // --- SYNC LOGIC ---
 
+const activeJobs = new Set<string>();
+
 async function processJob(jobId: string) {
-  const job = await getJob(jobId);
-  if (!job) return;
+  if (activeJobs.has(jobId)) return;
   
+  const job = await getJob(jobId);
+  if (!job || job.status === 'success') return;
+  
+  activeJobs.add(jobId);
   await updateJobStatus(jobId, 'in_progress');
   await broadcastStatus(jobId, 'in_progress', 'Preparing files...');
   
@@ -123,8 +129,11 @@ async function processJob(jobId: string) {
     const langFolder = LANGUAGE_FOLDER_NAMES[langKey] || langKey;
     const fileName = SOLUTION_FILE_NAMES[langKey] || 'solution.txt';
     
-    // Structure: Topic/Problem Name/language/solution.ext
-    const problemPath = `${topic}/${problemName}`;
+    // Structure: Platform/Topic/Problem Name/language/solution.ext
+    const platformId = (sub as any).platformId || 'leetcode';
+    const platformKey = platformId as keyof typeof updatedManifest.platforms;
+    const platform = getPlatform(platformId);
+    const problemPath = `${platform.name}/${topic}/${problemName}`;
     const solutionPath = `${problemPath}/${langFolder}/${fileName}`;
     const readmePath = `${problemPath}/README.md`;
 
@@ -147,33 +156,45 @@ async function processJob(jobId: string) {
 
     // 3. Merge this submission into manifest
     const updatedManifest = mergeSubmission(
-      currentManifest, sub, `${problemPath}/`, langKey
+      currentManifest, sub, `${problemPath}/`, langKey, platformId
     );
 
     // 4. Try to set username if not already in manifest
-    if (!updatedManifest.username) {
-      try {
-        const { fetchLeetCodeUsername } = await import('./leetcode/api');
-        updatedManifest.username = await fetchLeetCodeUsername();
-      } catch { /* non-critical — username is for stats card only */ }
+    if (!updatedManifest.platforms[platformKey]) {
+      updatedManifest.platforms[platformKey] = { submissions: {} };
+    }
+    if (platformId) {
+      const pData = updatedManifest.platforms[platformKey];
+      if (pData && !pData.username) {
+        try {
+          pData.username = await platform.getUsername();
+        } catch { /* non-critical — username is for stats card only */ }
+      }
     }
 
     // 5. Compute stats from MANIFEST (not local DB)
-    const stats = manifestToStats(updatedManifest);
+    const stats = manifestToStats(updatedManifest, platformId);
 
     // 6. Build files
     const problemReadme = buildReadme(sub);
-    const dashboardSection = buildDashboardSection(stats);
+    const dashboardSection = buildDashboardSection(stats, platformId);
 
     // 7. Handle README merging
     await broadcastStatus(jobId, 'in_progress', 'Merging dashboard...');
-    const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+    const platformReadmePath = `${platform.name}/README.md`;
+    const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
     const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
+    
+    // 7.5 Build Root README
+    const rootDashboardSection = buildRootDashboardSection(updatedManifest);
+    const existingRootReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+    const finalRootReadme = existingRootReadme ? mergeDashboard(existingRootReadme, rootDashboardSection) : rootDashboardSection;
 
     const files = [
       { path: solutionPath, contents: sub.solutionCode },
       { path: readmePath, contents: problemReadme },
-      { path: 'README.md', contents: finalReadme },
+      { path: platformReadmePath, contents: finalReadme },
+      { path: 'README.md', contents: finalRootReadme },
       { path: MANIFEST_PATH, contents: serializeManifest(updatedManifest) },
     ];
 
@@ -201,6 +222,103 @@ async function processJob(jobId: string) {
       await markFailed(jobId, errorMsg);
       await notifySyncFailed(jobId, sub.title, errorMsg);
     }
+  } finally {
+    activeJobs.delete(jobId);
+  }
+}
+
+async function handleBulkSync(platformId: string) {
+  console.log(`[AlgoVault] Starting bulk sync for ${platformId}`);
+  const platform = getPlatform(platformId);
+  const config = await getUserConfig();
+  
+  if (!config.repoOwner || !config.repoName) {
+    showNotification('Bulk Sync Failed', 'GitHub repository not configured.', 'error');
+    return;
+  }
+
+  showNotification('Bulk Sync Started', `Fetching all past submissions from ${platform.name}...`, 'success');
+  
+  try {
+    let totalSynced = 0;
+    let currentManifest = await fetchManifest(config.repoOwner, config.repoName, config.branch);
+
+    const platformKey = platformId as keyof typeof currentManifest.platforms;
+    if (!currentManifest.platforms[platformKey]) {
+      currentManifest.platforms[platformKey] = { submissions: {} };
+    }
+    if (platformId) {
+      const pData = currentManifest.platforms[platformKey];
+      if (pData && !pData.username) {
+        try {
+          pData.username = await platform.getUsername();
+        } catch { /* non-critical — username is for stats card only */ }
+      }
+    }
+    
+    for await (const batch of platform.fetchAllPastSubmissions()) {
+      if (batch.length === 0) continue;
+      
+      const filesToCommit: { path: string; contents: string }[] = [];
+      const problemTitles: string[] = [];
+      
+      for (const sub of batch) {
+        const topic = sub.tags[0] || 'General';
+        const problemName = sub.title;
+        problemTitles.push(problemName);
+        const langKey = sub.language.toLowerCase();
+        const langFolder = LANGUAGE_FOLDER_NAMES[langKey] || langKey;
+        const fileName = SOLUTION_FILE_NAMES[langKey] || 'solution.txt';
+        
+        const problemPath = `${platform.name}/${topic}/${problemName}`;
+        const solutionPath = `${problemPath}/${langFolder}/${fileName}`;
+        const readmePath = `${problemPath}/README.md`;
+
+        currentManifest = mergeSubmission(currentManifest, sub as any, `${problemPath}/`, langKey, platformId);
+        
+        const problemReadme = buildReadme(sub);
+        filesToCommit.push({ path: solutionPath, contents: sub.solutionCode });
+        filesToCommit.push({ path: readmePath, contents: problemReadme });
+        totalSynced++;
+      }
+      
+      const stats = manifestToStats(currentManifest, platformId);
+      const dashboardSection = buildDashboardSection(stats, platformId);
+      const platformReadmePath = `${platform.name}/README.md`;
+      const existingReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, platformReadmePath);
+      const finalReadme = existingReadme ? mergeDashboard(existingReadme, dashboardSection) : dashboardSection;
+      
+      const rootDashboardSection = buildRootDashboardSection(currentManifest);
+      const existingRootReadme = await getFileContent(config.repoOwner, config.repoName, config.branch, 'README.md');
+      const finalRootReadme = existingRootReadme ? mergeDashboard(existingRootReadme, rootDashboardSection) : rootDashboardSection;
+      
+      filesToCommit.push({ path: platformReadmePath, contents: finalReadme });
+      filesToCommit.push({ path: 'README.md', contents: finalRootReadme });
+      filesToCommit.push({ path: MANIFEST_PATH, contents: serializeManifest(currentManifest) });
+      
+      // Deduplicate files by path (keep the last one, which is the most recent in our loop if ordered correctly)
+      const uniqueFilesMap = new Map<string, { path: string; contents: string }>();
+      for (const file of filesToCommit) {
+        uniqueFilesMap.set(file.path, file);
+      }
+      const uniqueFilesToCommit = Array.from(uniqueFilesMap.values());
+      
+      const commitTitle = problemTitles.length > 1 
+        ? `feat(${platformId}): Sync ${problemTitles[0]} and ${problemTitles.length - 1} others`
+        : `feat(${platformId}): Sync ${problemTitles[0]}`;
+
+      console.log(`[AlgoVault] Committing batch of ${uniqueFilesToCommit.length} unique files...`);
+      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, commitTitle, uniqueFilesToCommit);
+      
+      await cacheManifest(currentManifest);
+      await invalidateStatsCache();
+    }
+    
+    showNotification('Bulk Sync Complete', `Successfully synced ${totalSynced} submissions from ${platform.name}!`, 'success');
+  } catch (error) {
+    const msg = getErrorMessage(error);
+    console.error('[AlgoVault] Bulk sync failed:', error);
+    showNotification('Bulk Sync Failed', msg, 'error');
   }
 }
 
@@ -303,29 +421,74 @@ export async function handleMessage(
         break;
       }
 
+      case MessageType.CREATE_REPO: {
+        const { name, isPrivate } = message.payload;
+        try {
+          const authState = await getAuthState();
+          if (!authState?.username) throw new Error('Not authenticated');
+          
+          const desc = 'Ultimate Competitive Programming & DSA Vault 🏆 Auto-generated by AlgoVault.';
+          const repo = await createRepository(name, desc, isPrivate);
+          
+          // Set topics
+          const topics = ['data-structures', 'algorithms', 'leetcode', 'competitive-programming', 'interview-prep', 'algovault', 'codeforces', 'dsa'];
+          await setRepoTopics(repo.owner.login, repo.name, topics);
+          
+          // Overwrite the auto-generated README to be completely blank
+          try {
+            await batchCommitFiles(
+              repo.owner.login, 
+              repo.name, 
+              repo.default_branch, 
+              'chore: initialize blank readme', 
+              [{ path: 'README.md', contents: '' }]
+            );
+          } catch (e) {
+            console.warn('[AlgoVault] Failed to clear auto-generated README:', e);
+          }
+          
+          // Update config to select this repo
+          await setUserConfig({
+            repoFullName: repo.full_name,
+            repoOwner: repo.owner.login,
+            repoName: repo.name,
+            branch: repo.default_branch
+          });
+          const repoInfo = {
+            fullName: repo.full_name,
+            name: repo.name,
+            owner: repo.owner.login,
+            defaultBranch: repo.default_branch,
+            private: repo.private
+          };
+          respond({ success: true, payload: { repoInfo } });
+        } catch (error) {
+          respond({ error: getErrorMessage(error) });
+        }
+        break;
+      }
+
       case MessageType.SYNC_BY_ID: {
-        const { submissionId } = message.payload;
-        const details = await fetchSubmissionDetails(submissionId);
-        const payload: any = {
-          questionId: details.questionId,
-          title: details.title,
-          titleSlug: details.titleSlug,
-          difficulty: details.difficulty as any,
-          description: details.questionContent,
-          examples: '',
-          constraints: '',
-          tags: details.tags,
-          language: details.lang,
-          solutionCode: details.code,
-          runtime: details.runtime,
-          memory: details.memory,
-          url: `https://leetcode.com/problems/${details.titleSlug}/`,
-          timestamp: new Date().toISOString()
-        };
+        const { submissionId, platformId, language, runtime, memory } = message.payload;
+        const pId = platformId || 'leetcode';
+        const platform = getPlatform(pId);
+        
+        // Pass optional metadata so the adapter doesn't have to scrape it
+        const payload = await platform.fetchSubmissionDetails(submissionId, { language, runtime, memory });
+        (payload as any).platformId = pId;
+        
         const dedupKey = await computeDedupKey(payload.titleSlug, payload.language, payload.solutionCode);
         const job = await enqueueJob(dedupKey, payload);
         processJob(job.id);
         respond({ success: true });
+        break;
+      }
+
+      case MessageType.START_BULK_SYNC: {
+        const { platformId } = message.payload;
+        // Launch in background so we don't block the extension message port
+        handleBulkSync(platformId).catch(console.error);
+        respond({ success: true, message: 'Bulk sync started in background' });
         break;
       }
 

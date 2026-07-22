@@ -6,6 +6,7 @@ export interface UserConfig {
   autoSync: boolean;
   notifications: boolean;
   theme: 'light' | 'dark';
+  codeforcesHandle?: string;
 }
 
 export interface AuthState {
@@ -21,4 +22,5 @@ export const DEFAULT_CONFIG: UserConfig = {
   autoSync: true,
   notifications: true,
   theme: 'dark',
+  codeforcesHandle: '',
 };

@@ -74,6 +74,49 @@ export function useSettings() {
     await fetchConfig();
   }, [fetchConfig]);
 
+  const triggerBulkSync = useCallback(async (platformId: string) => {
+    await chrome.runtime.sendMessage({
+      type: MessageType.START_BULK_SYNC,
+      payload: { platformId }
+    });
+  }, []);
+
+  const createRepo = useCallback(async (name: string, isPrivate: boolean) => {
+    setIsSaving(true);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.CREATE_REPO,
+        payload: { name, isPrivate }
+      }) as { success?: boolean, error?: string, payload?: { repoInfo: RepoInfo } };
+      
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response?.payload?.repoInfo) {
+        const newRepo = response.payload.repoInfo;
+        setRepos(prev => {
+          if (!prev.find(r => r.fullName === newRepo.fullName)) {
+            return [newRepo, ...prev];
+          }
+          return prev;
+        });
+        setConfig(prev => prev ? {
+          ...prev,
+          repoFullName: newRepo.fullName,
+          repoOwner: newRepo.owner,
+          repoName: newRepo.name,
+          branch: newRepo.defaultBranch
+        } : prev);
+      }
+      
+      await fetchRepos();
+      await fetchConfig();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [fetchRepos, fetchConfig]);
+
   return {
     config,
     repos,
@@ -83,5 +126,7 @@ export function useSettings() {
     exportData,
     clearData,
     fetchRepos,
+    triggerBulkSync,
+    createRepo,
   };
 }

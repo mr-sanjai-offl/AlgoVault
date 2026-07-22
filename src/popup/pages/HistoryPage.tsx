@@ -28,15 +28,15 @@ export function HistoryPage() {
   return (
     <div className="flex-1 flex flex-col relative h-full">
       {/* Filter Section */}
-      <section className="mb-6 mt-2">
+      <section className="mb-6 mt-2 animate-slide-up" style={{ animationDelay: '0ms' }}>
         <div className="flex gap-2 p-1 bg-surface-container-high rounded-lg">
           {filters.map((f) => (
             <button
               key={f.value}
               onClick={() => changeFilter(f.value)}
-              className={`flex-1 py-1.5 px-3 text-label-caps font-label-caps rounded transition-all uppercase tracking-widest ${
+              className={`flex-1 py-1.5 px-3 text-[10px] font-bold rounded transition-all uppercase tracking-widest ${
                 filter === f.value 
-                  ? 'bg-primary text-on-primary-container shadow-sm font-bold' 
+                  ? 'bg-primary text-on-primary-container shadow-sm' 
                   : 'text-on-surface-variant hover:bg-white/5'
               }`}
             >
