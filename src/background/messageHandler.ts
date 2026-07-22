@@ -228,16 +228,18 @@ async function handleBulkSync(platformId: string) {
   
   try {
     let totalSynced = 0;
+    let currentManifest = await fetchManifest(config.repoOwner, config.repoName, config.branch);
     
     for await (const batch of platform.fetchAllPastSubmissions()) {
       if (batch.length === 0) continue;
       
       const filesToCommit: { path: string; contents: string }[] = [];
-      let currentManifest = await fetchManifest(config.repoOwner, config.repoName, config.branch);
+      const problemTitles: string[] = [];
       
       for (const sub of batch) {
         const topic = sub.tags[0] || 'General';
         const problemName = sub.title;
+        problemTitles.push(problemName);
         const langKey = sub.language.toLowerCase();
         const langFolder = LANGUAGE_FOLDER_NAMES[langKey] || langKey;
         const fileName = SOLUTION_FILE_NAMES[langKey] || 'solution.txt';
@@ -270,8 +272,12 @@ async function handleBulkSync(platformId: string) {
       }
       const uniqueFilesToCommit = Array.from(uniqueFilesMap.values());
       
+      const commitTitle = problemTitles.length > 1 
+        ? `feat(${platformId}): Sync ${problemTitles[0]} and ${problemTitles.length - 1} others`
+        : `feat(${platformId}): Sync ${problemTitles[0]}`;
+
       console.log(`[AlgoVault] Committing batch of ${uniqueFilesToCommit.length} unique files...`);
-      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, `feat(${platformId}): Bulk sync ${batch.length} submissions`, uniqueFilesToCommit);
+      await batchCommitFiles(config.repoOwner, config.repoName, config.branch, commitTitle, uniqueFilesToCommit);
       
       await cacheManifest(currentManifest);
       await invalidateStatsCache();
