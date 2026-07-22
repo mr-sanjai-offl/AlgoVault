@@ -354,7 +354,7 @@ export function SettingsPage() {
 
       {/* Version Footer */}
       <footer className="mt-4 flex flex-col items-center gap-1">
-        <span className="text-label-caps font-label-caps text-on-surface-variant/40 uppercase tracking-[0.2em]">AlgoVault v2.0.0</span>
+        <span className="text-label-caps font-label-caps text-on-surface-variant/40 uppercase tracking-[0.2em]">AlgoVault v2.0.1</span>
         <span className="text-body-sm text-on-surface-variant/30 italic">Developed for high-flow engineering</span>
       </footer>
     </div>
